@@ -1,0 +1,728 @@
+---
+title: "RNA-seq Comprehensive Concept Quiz"
+subtitle: "Concept review before the hands-on Shell and R sessions"
+author: "Krushna Chandra Murmu"
+institute: "Bioinformatics Specialist, Premas Life Sciences"
+
+format:
+  revealjs:
+    theme: simple
+    width: 1600
+    height: 900
+    margin: 0.045
+    center: false
+    progress: true
+    controls: true
+    navigation-mode: linear
+    transition: fade
+    background-transition: fade
+    toc: false
+    scrollable: true
+    quiz:
+      allowNumberKeys: true
+      disableOnCheck: true
+      disableReset: true
+      shuffleOptions: true
+      defaultCorrect: "Correct"
+      defaultIncorrect: "Incorrect"
+      includeScore: true
+    include-in-header:
+      text: |
+        <style>
+        :root {
+          --blue: #165DAD;
+          --dark: #10243E;
+          --soft: #F3F7FB;
+          --border: #D8E4F0;
+          --green: #2F855A;
+          --warm: #FFF7E8;
+          --red: #C53030;
+        }
+
+        .reveal { font-size: 32px; }
+        .reveal h1 { color: var(--dark); font-size: 1.9em; }
+        .reveal h2 {
+          color: var(--dark);
+          font-size: 1.35em;
+          border-bottom: 3px solid #d7e3f1;
+          padding-bottom: .12em;
+        }
+
+        .reveal .slides section {
+          max-height: 900px;
+          overflow-y: auto !important;
+          overflow-x: hidden;
+          padding: 12px 28px;
+          box-sizing: border-box;
+        }
+
+        .takehome-card {
+          border: 1px solid var(--border);
+          border-left: 9px solid var(--green);
+          border-radius: 14px;
+          background: #F5FAF6;
+          padding: 18px 22px;
+          margin: 14px 0;
+        }
+
+        /* Make quiz options projector-friendly */
+        .quiz-question li.option-button {
+          font-size: 0.88em;
+          line-height: 1.25;
+          margin: 11px 0;
+          padding: 12px 16px !important;
+          border-radius: 10px;
+        }
+
+        /*
+          IMPORTANT:
+          Individual quiz slides do NOT show Check, Reset, or running score.
+          Participants commit all answers first.
+        */
+        .quiz-question .check-button,
+        .quiz-question .reset-button,
+        .quiz-question .score {
+          display: none !important;
+        }
+
+        .quiz-question .button-container {
+          margin-top: 16px;
+        }
+
+        /* Keep only navigation buttons visible on question slides */
+        .quiz-question .prev-button,
+        .quiz-question .next-button {
+          font-size: 0.72em;
+          padding: 7px 14px;
+        }
+
+        /* Correct answers are shown only after final submission */
+        body.quiz-review-mode .quiz-question li.review-correct-answer {
+          outline: 4px solid #2F855A !important;
+          background: #E6F6EC !important;
+          position: relative;
+        }
+
+        body.quiz-review-mode .quiz-question li.review-correct-answer::after {
+          content: "  ✓ Correct answer";
+          font-weight: 800;
+          color: #206A42;
+        }
+
+        #quiz-submit-panel {
+          max-width: 1050px;
+          margin: 32px auto 0 auto;
+          text-align: center;
+          padding: 26px 30px;
+          border: 1px solid var(--border);
+          border-radius: 18px;
+          background: var(--soft);
+          box-shadow: 0 5px 18px rgba(16,36,62,.10);
+        }
+
+        #submit-final-quiz,
+        #review-final-quiz {
+          font-size: 0.80em;
+          font-weight: 700;
+          border: 0;
+          border-radius: 10px;
+          padding: 12px 22px;
+          margin: 10px 8px;
+          cursor: pointer;
+        }
+
+        #submit-final-quiz {
+          background: var(--blue);
+          color: white;
+        }
+
+        #review-final-quiz {
+          background: #E6F6EC;
+          color: #206A42;
+          border: 2px solid #8FD0A8;
+          display: none;
+        }
+
+        #quiz-final-message {
+          margin-top: 16px;
+          font-size: 1.02em;
+          font-weight: 700;
+          color: var(--dark);
+        }
+
+        #quiz-final-score {
+          font-size: 1.65em;
+          font-weight: 800;
+          color: var(--blue);
+          margin-top: 16px;
+        }
+
+        .quiz-small-note {
+          font-size: 0.70em;
+          color: #52677D;
+        }
+        </style>
+
+revealjs-plugins:
+  - quiz
+
+include-after-body:
+  text: |
+    <script>
+    (function () {
+      function setupFinalOnlyQuiz() {
+        if (!window.Reveal || typeof window.Reveal.on !== "function") {
+          setTimeout(setupFinalOnlyQuiz, 100);
+          return;
+        }
+
+        function getQuizSlides() {
+          return Array.from(document.querySelectorAll("section.quiz-question"));
+        }
+
+        function answered(slide) {
+          return slide.querySelectorAll("li.option-button.selected").length > 0;
+        }
+
+        function revealCorrectAnswers() {
+          document.body.classList.add("quiz-review-mode");
+
+          getQuizSlides().forEach(function (slide) {
+            slide.querySelectorAll("li.option-button").forEach(function (li) {
+              const correctSpan = li.querySelector("span.correct");
+              if (correctSpan) {
+                li.classList.add("review-correct-answer");
+              }
+            });
+          });
+        }
+
+        function gradeQuiz() {
+          const slides = getQuizSlides();
+          const unanswered = slides.filter(function (slide) {
+            return !answered(slide);
+          });
+
+          const message = document.getElementById("quiz-final-message");
+          const scoreBox = document.getElementById("quiz-final-score");
+          const reviewBtn = document.getElementById("review-final-quiz");
+
+          if (unanswered.length > 0) {
+            message.textContent =
+              "You still have " + unanswered.length +
+              " unanswered question" + (unanswered.length === 1 ? "." : "s.");
+            scoreBox.textContent = "";
+            return;
+          }
+
+          /*
+            Trigger the extension's own grading only now.
+            Until this point participants cannot check individual questions.
+          */
+          slides.forEach(function (slide) {
+            const check = slide.querySelector(".check-button");
+            if (check && !check.disabled) {
+              check.click();
+            }
+          });
+
+          /*
+            quarto-quiz updates its hidden score on every quiz slide.
+            Read the first one after grading.
+          */
+          setTimeout(function () {
+            const hiddenScore = document.querySelector(
+              "section.quiz-question .score"
+            );
+
+            const scoreText = hiddenScore
+              ? hiddenScore.textContent
+              : "Quiz submitted";
+
+            scoreBox.textContent = scoreText;
+            message.textContent =
+              "Quiz submitted. Your answers are now locked.";
+
+            reviewBtn.style.display = "inline-block";
+          }, 100);
+        }
+
+        document.addEventListener("click", function (event) {
+          if (event.target && event.target.id === "submit-final-quiz") {
+            gradeQuiz();
+          }
+
+          if (event.target && event.target.id === "review-final-quiz") {
+            revealCorrectAnswers();
+
+            const firstQuiz = getQuizSlides()[0];
+            if (firstQuiz) {
+              const indices = window.Reveal.getIndices(firstQuiz);
+              window.Reveal.slide(indices.h, indices.v || 0);
+            }
+          }
+        });
+      }
+
+      setupFinalOnlyQuiz();
+    })();
+    </script>
+
+editor: source
+---
+
+# RNA-seq Comprehensive Concept Quiz
+
+## How this quiz works
+
+::: {.takehome-card}
+### One submission at the end
+
+Choose your answers as you move through the questions.
+
+**You will not see whether an answer is correct or incorrect while answering.**
+
+At the end, select **Submit Quiz & Show Score**.
+
+Only after the score is calculated will **Review Correct Answers** become available.
+:::
+
+- Number keys can be used to select options.
+- Multi-select questions are labeled **Select all that apply**.
+- You may move backward and change answers **before final submission**.
+- Once submitted, answers are locked.
+
+---
+
+# Section 1 — RNA-seq Foundations
+
+## 1. What does bulk RNA-seq primarily measure? {.quiz-question}
+
+- [The relative abundance of RNA-derived sequencing fragments across a biological sample]{.correct data-explanation="Bulk RNA-seq samples RNA-derived fragments from the whole specimen and measures their abundance collectively."}
+- [The exact number of intact RNA molecules in every cell]{data-explanation="Bulk RNA-seq does not directly count intact molecules in individual cells."}
+- [Only DNA sequence variants]{data-explanation="DNA variant detection is not the primary purpose of standard bulk RNA-seq expression analysis."}
+- [Protein abundance directly]{data-explanation="RNA-seq measures RNA-derived sequence abundance, not protein abundance directly."}
+
+---
+
+## 2. Which are important RNA-seq library-design choices? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [Poly(A) selection versus rRNA depletion]{.correct data-explanation="This choice changes which RNA populations are represented in the library."}
+- [Stranded versus unstranded library preparation]{.correct data-explanation="Strandedness affects how reads can be assigned to overlapping transcripts and genes."}
+- [Single-end versus paired-end sequencing]{.correct data-explanation="Read configuration affects mapping and fragment-level information."}
+- [The color used for the PCA plot]{data-explanation="Plot styling is not a library-preparation choice."}
+
+---
+
+## 3. Why are biological replicates important? {.quiz-question}
+
+- [They capture biological variability and support inference beyond a single specimen]{.correct data-explanation="Biological replication allows variability among independent biological units to be estimated."}
+- [They make FASTQ quality scores larger]{data-explanation="Replication does not alter sequencing quality-score definitions."}
+- [They eliminate all batch effects automatically]{data-explanation="Replicates do not automatically remove confounding or batch effects."}
+- [They replace the need for metadata]{data-explanation="Metadata remain essential for describing experimental structure."}
+
+---
+
+## 4. Which situation represents confounding? {.quiz-question}
+
+- [All controls are processed in Batch 1 and all treated samples in Batch 2]{.correct data-explanation="Condition and batch cannot be separated because they change together."}
+- [Controls and treated samples are balanced across both batches]{data-explanation="Balancing condition across batches helps separate condition from batch effects."}
+- [Each condition contains independent biological replicates]{data-explanation="Replication is desirable and does not by itself create confounding."}
+- [Sample metadata record both condition and batch]{data-explanation="Recording covariates supports appropriate modeling; it is not itself confounding."}
+
+---
+
+# Section 2 — FASTQ and Quality Control
+
+## 5. What information is contained in a FASTQ record? {.quiz-question}
+
+- [Read identifier, nucleotide sequence and per-base quality information]{.correct data-explanation="FASTQ stores a read identifier, sequence, separator and encoded per-base quality scores."}
+- [Gene counts and adjusted p-values]{data-explanation="Those belong to downstream count and statistical result tables."}
+- [Only chromosome coordinates]{data-explanation="Chromosome coordinates are produced after alignment."}
+- [Gene Ontology categories]{data-explanation="GO categories are used during downstream functional interpretation."}
+
+---
+
+## 6. What does a Phred Q30 base quality indicate? {.quiz-question}
+
+- [An estimated base-call error probability of about 0.001]{.correct data-explanation="Q30 corresponds to an estimated error probability of 10^-3, or roughly one error per thousand base calls."}
+- [A 30% probability that the base is wrong]{data-explanation="Q30 is logarithmic and corresponds to a much smaller error probability."}
+- [A mapping quality of exactly 30]{data-explanation="Base quality and mapping quality are different concepts."}
+- [Thirty reads mapped to one gene]{data-explanation="Phred quality does not describe read counts."}
+
+---
+
+## 7. Which are typical raw-read QC checks? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [Per-base sequence quality]{.correct data-explanation="Base-quality profiles are a standard FASTQ QC metric."}
+- [Adapter content]{.correct data-explanation="Adapter contamination can indicate short inserts or incomplete trimming."}
+- [GC distribution]{.correct data-explanation="Unexpected GC profiles can indicate contamination or library-specific effects."}
+- [Adjusted p-value distribution]{data-explanation="Adjusted p-values are generated much later during statistical testing."}
+
+---
+
+## 8. A FastQC warning should generally be interpreted as what? {.quiz-question}
+
+- [A diagnostic signal that should be interpreted in the context of the library and experiment]{.correct data-explanation="FastQC warnings are flags for investigation and are not automatically reasons to discard data."}
+- [Proof that the sample must be deleted]{data-explanation="Warnings require interpretation and do not automatically imply unusable data."}
+- [Proof that alignment will fail]{data-explanation="Many warnings do not prevent successful alignment."}
+- [Evidence that DESeq2 normalization is wrong]{data-explanation="FASTQ QC occurs before DESeq2 and does not directly diagnose DESeq2 normalization."}
+
+---
+
+# Section 3 — Alignment and Reference Files
+
+## 9. Why does RNA-seq usually require a splice-aware aligner? {.quiz-question}
+
+- [RNA-derived reads can span exon-exon junctions that are separated by introns in the genome]{.correct data-explanation="Splice-aware aligners can represent split alignments across genomic introns."}
+- [RNA reads never contain sequencing errors]{data-explanation="RNA-seq reads can contain sequencing errors like other sequencing reads."}
+- [RNA-seq does not use a reference sequence]{data-explanation="Genome-based RNA-seq alignment typically uses a reference genome."}
+- [Every RNA read maps to several chromosomes]{data-explanation="Multi-mapping can occur, but it is not the defining reason for splice-aware alignment."}
+
+---
+
+## 10. What is the main role of a reference FASTA? {.quiz-question}
+
+- [To provide the nucleotide sequence against which reads are aligned]{.correct data-explanation="The FASTA contains the reference sequence used to locate reads."}
+- [To describe gene and exon coordinates]{data-explanation="Feature coordinates are generally supplied through GTF or GFF annotation files."}
+- [To store sample condition labels]{data-explanation="Sample conditions belong in metadata."}
+- [To contain differential-expression statistics]{data-explanation="Statistical results are produced downstream."}
+
+---
+
+## 11. What is the main role of a GTF/GFF annotation? {.quiz-question}
+
+- [To describe genomic features such as genes, transcripts and exons]{.correct data-explanation="Annotations connect genomic coordinates to biological features and identifiers."}
+- [To store compressed raw reads]{data-explanation="Raw sequencing reads are typically stored as FASTQ or FASTQ.GZ."}
+- [To contain only base-quality scores]{data-explanation="Base-quality scores belong to FASTQ."}
+- [To replace the reference genome sequence]{data-explanation="Annotation complements rather than replaces the reference sequence."}
+
+---
+
+## 12. Why must FASTA and GTF/GFF versions be compatible? {.quiz-question}
+
+- [Their genome build and chromosome coordinate system must refer to the same reference]{.correct data-explanation="Build or chromosome-name mismatches can disrupt annotation, counting and interpretation."}
+- [Both files must contain identical text]{data-explanation="They contain different types of information."}
+- [Both must have the same file extension]{data-explanation="Biological compatibility is not determined by file extension."}
+- [DESeq2 requires both files directly]{data-explanation="DESeq2 normally uses a count matrix and sample metadata."}
+
+---
+
+## 13. What does a high MAPQ generally represent? {.quiz-question}
+
+- [Greater confidence in the genomic placement of the read]{.correct data-explanation="Mapping quality summarizes confidence that the read has been placed at the correct location."}
+- [Greater confidence in every nucleotide base call]{data-explanation="Per-base confidence is represented by base quality, not MAPQ."}
+- [A larger gene fold change]{data-explanation="MAPQ is an alignment metric, not a differential-expression effect size."}
+- [More enriched pathways]{data-explanation="Pathway enrichment is unrelated to individual alignment MAPQ."}
+
+---
+
+## 14. What commonly causes multi-mapping? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [Repetitive genomic sequence]{.correct data-explanation="Repeated sequence can provide multiple equally plausible alignment locations."}
+- [Highly similar paralogous genes]{.correct data-explanation="Closely related genes can contain sequence that cannot be uniquely assigned."}
+- [Pseudogenes with sequence similarity]{.correct data-explanation="Pseudogene similarity can create ambiguous mapping."}
+- [Using an adjusted p-value threshold]{data-explanation="Statistical thresholds are unrelated to alignment ambiguity."}
+
+---
+
+# Section 4 — SAM/BAM and Counting
+
+## 15. What is the key difference between SAM and BAM? {.quiz-question}
+
+- [BAM is a compressed binary representation of SAM alignment information]{.correct data-explanation="SAM is text-based and human-readable, while BAM stores equivalent alignment records in binary form."}
+- [SAM stores genes while BAM stores proteins]{data-explanation="Both are sequence-alignment formats."}
+- [SAM is RNA-only and BAM is DNA-only]{data-explanation="Both formats are used across sequencing applications."}
+- [BAM is an annotation format]{data-explanation="BAM stores alignments, not gene annotation definitions."}
+
+---
+
+## 16. In `50M1000N50M`, what does the `N` represent in RNA-seq? {.quiz-question}
+
+- [Reference sequence skipped by a spliced alignment, commonly an intron]{.correct data-explanation="N is used for skipped reference regions and is characteristic of splice-aware RNA-seq alignments."}
+- [A base with an unknown quality score]{data-explanation="CIGAR N does not encode sequencing-quality values."}
+- [A duplicated read]{data-explanation="Duplicate status is encoded elsewhere in alignment metadata."}
+- [A gene with no expression]{data-explanation="CIGAR operations describe read-to-reference alignment structure."}
+
+---
+
+## 17. Which operations are commonly performed with SAMtools? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [Sorting alignment files]{.correct data-explanation="Coordinate sorting is a common SAMtools workflow step."}
+- [Indexing BAM files]{.correct data-explanation="BAM indexes support rapid access to genomic regions."}
+- [Viewing and filtering alignment records]{.correct data-explanation="SAMtools can inspect or filter SAM/BAM records."}
+- [Performing GO over-representation analysis]{data-explanation="GO enrichment is a downstream functional-analysis task."}
+
+---
+
+## 18. Why is coordinate sorting useful? {.quiz-question}
+
+- [It places alignments in genomic order and supports efficient indexed access]{.correct data-explanation="Coordinate-sorted BAM files are required or preferred by many downstream genomic tools."}
+- [It alphabetically sorts gene symbols for enrichment]{data-explanation="Coordinate sorting acts on alignment positions, not functional-analysis gene symbols."}
+- [It normalizes library sizes]{data-explanation="Library normalization occurs during downstream count analysis."}
+- [It calculates p-values]{data-explanation="Sorting is a file-processing operation, not a statistical test."}
+
+---
+
+## 19. What does featureCounts conceptually do? {.quiz-question}
+
+- [Assigns aligned reads or fragments to annotated genomic features]{.correct data-explanation="featureCounts overlaps alignments with annotation features to generate feature-level counts."}
+- [Performs splice-aware alignment from FASTQ]{data-explanation="Alignment happens before featureCounts."}
+- [Performs differential-expression hypothesis testing]{data-explanation="Statistical testing occurs after gene counts are generated."}
+- [Builds a genome FASTA]{data-explanation="Reference genome construction is not the role of featureCounts."}
+
+---
+
+## 20. Which factors can change feature assignment? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [Library strandedness]{.correct data-explanation="Strand assumptions can change whether an overlapping alignment is compatible with a gene."}
+- [Single-end versus paired-end counting rules]{.correct data-explanation="Paired-end libraries are often counted at the fragment rather than individual-read level."}
+- [Ambiguous overlap with multiple genomic features]{.correct data-explanation="Ambiguous overlaps may remain unassigned or be handled according to counting rules."}
+- [Volcano-plot point size]{data-explanation="Plot styling has no effect on gene assignment."}
+
+---
+
+# Section 5 — Count Matrix and Statistical Modeling
+
+## 21. What should DESeq2 or edgeR typically receive as expression input? {.quiz-question}
+
+- [Raw integer-like gene counts]{.correct data-explanation="Count-based negative-binomial methods are designed around raw count observations with internal normalization."}
+- [Only TPM values]{data-explanation="TPM is useful for some abundance comparisons but is not the standard input to these count-based differential-expression models."}
+- [Only FPKM values]{data-explanation="FPKM is not the expected count input for standard DESeq2 or edgeR testing."}
+- [Only z-scores]{data-explanation="Z-scores do not preserve the count-distribution assumptions used by these models."}
+
+---
+
+## 22. Why not compare raw counts directly between samples? {.quiz-question}
+
+- [Observed counts are influenced by library size, sampling and biological variability]{.correct data-explanation="Raw counts reflect more than biological expression and require an appropriate statistical model."}
+- [Raw counts cannot contain zeros]{data-explanation="RNA-seq count matrices commonly contain zeros."}
+- [Raw counts are always normally distributed]{data-explanation="Count data are discrete and commonly show mean-dependent variance and overdispersion."}
+- [Raw counts already represent adjusted p-values]{data-explanation="Counts and p-values are completely different quantities."}
+
+---
+
+## 23. What is the null hypothesis for a standard gene-level condition test? {.quiz-question}
+
+- [There is no systematic condition effect on expression for that gene]{.correct data-explanation="The null usually corresponds to a zero condition coefficient or no expression difference attributable to the tested condition."}
+- [The gene has exactly zero reads in all samples]{data-explanation="A gene can be expressed while still showing no condition effect."}
+- [Every sample must have identical counts]{data-explanation="Counts can vary among replicates even under the null."}
+- [All genes are differentially expressed]{data-explanation="The test is gene-specific and the null represents no tested effect."}
+
+---
+
+## 24. Why is the negative binomial model useful for RNA-seq? {.quiz-question}
+
+- [It can represent count data with variability greater than expected under a simple Poisson model]{.correct data-explanation="RNA-seq biological replicates commonly show overdispersion, which the negative binomial can model."}
+- [It assumes every gene has the same count]{data-explanation="The model allows gene-specific means and dispersion behavior."}
+- [It converts BAM files to FASTQ]{data-explanation="That is a file-format operation unrelated to count modeling."}
+- [It performs pathway annotation]{data-explanation="Pathway annotation occurs downstream of statistical testing."}
+
+---
+
+## 25. What does dispersion represent conceptually? {.quiz-question}
+
+- [Extra variability in counts around their expected mean]{.correct data-explanation="Dispersion captures biological and other variability beyond simple sampling noise."}
+- [The chromosome position of a gene]{data-explanation="Genomic position is annotation information, not dispersion."}
+- [The number of GO terms assigned to a gene]{data-explanation="Functional annotation is unrelated to count-model dispersion."}
+- [The proportion of mapped reads]{data-explanation="Mapping rate is an alignment QC metric."}
+
+---
+
+## 26. Why do methods borrow information across genes when estimating dispersion? {.quiz-question}
+
+- [Gene-wise variability estimates can be unstable, especially with limited replicates]{.correct data-explanation="Cross-gene information stabilizes noisy dispersion estimates and improves inference."}
+- [All genes are assumed to have identical expression]{data-explanation="Borrowing information does not mean forcing identical expression across genes."}
+- [It removes the need for biological replicates]{data-explanation="Replication remains fundamental for estimating biological variability."}
+- [It guarantees every gene becomes significant]{data-explanation="Stabilization improves estimation; it does not guarantee significance."}
+
+---
+
+# Section 6 — DESeq2 and edgeR
+
+## 27. Which pairing correctly matches common normalization strategies? {.quiz-question}
+
+- [DESeq2: median-of-ratios; edgeR: TMM]{.correct data-explanation="These are the commonly used default scaling approaches in the two frameworks."}
+- [DESeq2: TMM; edgeR: TPM]{data-explanation="TMM is commonly associated with edgeR, while TPM is not its standard count-model normalization."}
+- [DESeq2: FPKM; edgeR: RPKM]{data-explanation="Neither uses FPKM/RPKM as its standard count-model normalization."}
+- [DESeq2: quantile normalization; edgeR: z-score scaling]{data-explanation="These are not their usual count-model scaling strategies."}
+
+---
+
+## 28. What do DESeq2 and edgeR have in common? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [They model gene counts using negative-binomial frameworks]{.correct data-explanation="Both are built around negative-binomial count models."}
+- [They estimate dispersion for RNA-seq count variability]{.correct data-explanation="Dispersion estimation is central to both frameworks."}
+- [They support generalized linear-model designs]{.correct data-explanation="Both can represent multifactor experimental designs through GLM frameworks."}
+- [They require TPM as the statistical model input]{data-explanation="Both generally use raw gene counts for their count-based models."}
+
+---
+
+## 29. Which testing strategies are correctly associated with the packages? {.quiz-question .quiz-multiple}
+
+**Select all that apply.**
+
+- [DESeq2 commonly uses Wald tests for coefficients and contrasts]{.correct data-explanation="The Wald test is the standard DESeq2 testing approach for many contrasts."}
+- [DESeq2 supports likelihood-ratio tests for nested models]{.correct data-explanation="DESeq2 can compare full and reduced models with an LRT."}
+- [edgeR supports quasi-likelihood inference]{.correct data-explanation="edgeR provides quasi-likelihood GLM methods for robust inference."}
+- [edgeR performs differential expression only with a t-test]{data-explanation="edgeR is based on negative-binomial count models, not a simple t-test-only framework."}
+
+---
+
+## 30. What is the main difference between effect size and statistical evidence? {.quiz-question}
+
+- [Effect size describes the magnitude of change; p-values describe evidence against a null model]{.correct data-explanation="Fold change and statistical evidence answer different questions and should be interpreted together."}
+- [They are two names for the same number]{data-explanation="Effect magnitude and hypothesis-test evidence are distinct quantities."}
+- [Adjusted p-value indicates whether expression increased or decreased]{data-explanation="Direction is represented by the sign of the estimated effect, such as log2 fold change."}
+- [Effect size depends only on the number of tested genes]{data-explanation="Effect size estimates the magnitude of a biological contrast, not the number of tests."}
+
+---
+
+# Section 7 — Multiple Testing and Interpretation
+
+## 31. Why is multiple-testing correction required? {.quiz-question}
+
+- [Testing thousands of genes creates many opportunities for chance-positive results]{.correct data-explanation="FDR-controlling procedures account for the multiplicity of genome-scale hypothesis testing."}
+- [It increases every fold change]{data-explanation="Multiple-testing correction modifies statistical significance measures, not fold-change estimates."}
+- [It changes FASTQ quality scores]{data-explanation="FASTQ base quality is unrelated to multiple-testing correction."}
+- [It improves genome alignment]{data-explanation="Alignment occurs before differential-expression hypothesis testing."}
+
+---
+
+## 32. What does an FDR-controlled adjusted p-value help control? {.quiz-question}
+
+- [The expected proportion of false discoveries among reported discoveries under the procedure]{.correct data-explanation="FDR procedures target false discoveries among the set called significant."}
+- [The probability that every significant gene is biologically important]{data-explanation="Statistical significance is not identical to biological importance."}
+- [The fraction of reads that map uniquely]{data-explanation="Unique mapping rate is an alignment QC metric."}
+- [The number of transcripts in the annotation]{data-explanation="Annotation content is unrelated to FDR control."}
+
+---
+
+## 33. Which result deserves the most careful interpretation? {.quiz-question}
+
+- [A statistically significant gene with a very small effect size]{.correct data-explanation="Statistical evidence does not automatically imply a biologically meaningful effect; magnitude and context matter."}
+- [A gene whose sample-level pattern agrees with the modeled contrast]{data-explanation="Agreement between model and sample-level pattern strengthens interpretability."}
+- [A pathway supported by several coherent genes]{data-explanation="Coherent multi-gene support can strengthen biological interpretation."}
+- [A result that is consistent across independent replicates]{data-explanation="Consistency across biological replicates generally supports confidence in the observed pattern."}
+
+---
+
+# Section 8 — Visualization and Functional Analysis
+
+## 34. What is PCA mainly used to assess in RNA-seq? {.quiz-question}
+
+- [Global sample relationships and major sources of expression variation]{.correct data-explanation="PCA summarizes high-dimensional expression variation into major axes for sample-level exploration."}
+- [The exact CIGAR string of each read]{data-explanation="CIGAR strings are alignment-record fields."}
+- [Gene Ontology term definitions]{data-explanation="GO is a functional annotation system."}
+- [FASTQ adapter sequences]{data-explanation="Adapter content is assessed during raw-read QC."}
+
+---
+
+## 35. What does an MA plot combine? {.quiz-question}
+
+- [Mean abundance and log fold change]{.correct data-explanation="The MA plot shows expression effect size against average abundance."}
+- [Mapping quality and base quality]{data-explanation="Those are sequencing/alignment quality metrics, not MA axes."}
+- [GO term size and pathway score]{data-explanation="Those belong to enrichment visualization."}
+- [Chromosome and genomic position]{data-explanation="Those would describe genome coordinates rather than an MA plot."}
+
+---
+
+## 36. What does a volcano plot emphasize? {.quiz-question}
+
+- [Effect size together with statistical evidence]{.correct data-explanation="Volcano plots commonly place fold change on the x-axis and a significance measure on the y-axis."}
+- [FASTQ quality versus GC content]{data-explanation="Those are raw-read QC measures."}
+- [Genomic position versus MAPQ]{data-explanation="Those are alignment-related quantities."}
+- [Transcript length versus exon count]{data-explanation="Those are annotation properties."}
+
+---
+
+## 37. What is the core difference between ORA and GSEA? {.quiz-question}
+
+- [ORA uses a selected gene list; GSEA evaluates genes along a ranked list]{.correct data-explanation="ORA relies on a threshold-defined set, whereas GSEA looks for coordinated enrichment across a ranking."}
+- [ORA uses FASTQ and GSEA uses BAM]{data-explanation="Both methods operate downstream on gene-level results."}
+- [ORA performs alignment and GSEA performs counting]{data-explanation="Neither method performs primary sequencing analysis."}
+- [ORA is only for DNA-seq]{data-explanation="ORA is widely used for gene-list interpretation in RNA-seq and other omics analyses."}
+
+---
+
+## 38. Why does the ORA background matter? {.quiz-question}
+
+- [It defines the gene universe against which enrichment is evaluated]{.correct data-explanation="The chosen universe changes the expected overlap and therefore the enrichment statistics."}
+- [It determines FASTQ compression]{data-explanation="Compression is unrelated to functional enrichment statistics."}
+- [It replaces the selected significant gene list]{data-explanation="ORA requires both a selected set and an appropriate background universe."}
+- [It sets BAM coordinate order]{data-explanation="BAM sorting is unrelated to enrichment background."}
+
+---
+
+## 39. Why can analyzing up- and down-regulated genes separately be useful? {.quiz-question}
+
+- [Opposing biological programs can be obscured when both directions are combined]{.correct data-explanation="Separate directional enrichment can distinguish increased from decreased biological programs."}
+- [It makes alignment splice-aware]{data-explanation="Splice awareness is an alignment property."}
+- [It changes base quality scores]{data-explanation="Differential-expression direction has no effect on raw sequencing quality."}
+- [It guarantees significant enrichment]{data-explanation="Separating directions can improve interpretability but does not guarantee significance."}
+
+---
+
+## 40. Which sequence best represents a defensible RNA-seq interpretation workflow? {.quiz-question}
+
+- [Technical QC → sample relationships → correct contrast → gene-level effects → pathways → biological context]{.correct data-explanation="Interpretation should build from technical validity and sample structure toward gene- and pathway-level biological conclusions."}
+- [GO enrichment → FASTQ QC → alignment → experimental design]{data-explanation="This reverses the logical order of the analysis."}
+- [Volcano plot → sequencing → RNA extraction → hypothesis]{data-explanation="The workflow should begin with the biological question and experimental design."}
+- [Adjusted p-values → library preparation → sample metadata]{data-explanation="Statistical results occur after experimental and computational processing."}
+
+---
+
+# Final Submission
+
+## Submit your quiz
+
+<div id="quiz-submit-panel">
+
+You have reached the end of the quiz.
+
+**Your answers have not yet been graded.**
+
+<button id="submit-final-quiz">Submit Quiz & Show Score</button>
+
+<div id="quiz-final-message"></div>
+
+<div id="quiz-final-score"></div>
+
+<button id="review-final-quiz">Review Correct Answers</button>
+
+<p class="quiz-small-note">
+After submission, your answers are locked. Use “Review Correct Answers” to go back through the quiz with the correct choices highlighted.
+</p>
+
+</div>
+
+---
+
+# After the Quiz
+
+## How to interpret your score
+
+::: {.takehome-card}
+### Suggested workshop interpretation
+
+**85–100%** — strong conceptual readiness for the hands-on sessions  
+**70–84%** — good foundation; revisit the weaker sections  
+**50–69%** — review alignment, counting and statistics before the practical  
+**Below 50%** — revisit the conceptual deck before moving to Shell/R implementation
+:::
+
+The important goal is not memorizing terminology.
+
+It is understanding **why each step exists, what information it produces, and how errors propagate into downstream interpretation**.

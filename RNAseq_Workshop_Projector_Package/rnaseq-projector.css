@@ -1,0 +1,187 @@
+/* RNA-seq workshop — projector / large-screen presentation styling */
+
+:root {
+  --r-main-font-size: 34px;
+  --r-heading-font: Arial, Helvetica, sans-serif;
+  --r-main-font: Arial, Helvetica, sans-serif;
+  --r-code-font: "DejaVu Sans Mono", "Courier New", monospace;
+  --r-heading-color: #102a43;
+  --r-main-color: #172b4d;
+  --r-link-color: #0057b8;
+  --r-selection-background-color: #dbeafe;
+}
+
+.reveal {
+  font-size: 34px;
+  line-height: 1.26;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal .slides section {
+  padding: 10px 24px;
+  box-sizing: border-box;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  text-transform: none;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  margin-top: 0;
+}
+
+.reveal h1 {
+  font-size: 1.75em;
+  line-height: 1.05;
+}
+
+.reveal h2 {
+  font-size: 1.40em;
+  line-height: 1.08;
+  margin-bottom: 0.42em;
+  border-bottom: 3px solid #d7e3f1;
+  padding-bottom: 0.12em;
+}
+
+.reveal h3 {
+  font-size: 1.08em;
+  margin-bottom: 0.3em;
+}
+
+.reveal p,
+.reveal li {
+  font-size: 0.92em;
+}
+
+.reveal li {
+  margin-bottom: 0.22em;
+}
+
+.reveal ul,
+.reveal ol {
+  margin-top: 0.25em;
+}
+
+/* Keep dense tables readable at distance without overrunning the slide. */
+.reveal table {
+  font-size: 0.62em;
+  line-height: 1.15;
+  width: 100%;
+  margin-top: 0.35em;
+}
+
+.reveal table th {
+  font-weight: 700;
+  background: #eef4fa;
+}
+
+.reveal table th,
+.reveal table td {
+  padding: 0.32em 0.45em;
+  vertical-align: top;
+}
+
+/* Code is intentionally larger than typical web slides for projector use. */
+.reveal pre {
+  width: 100%;
+  margin: 0.45em 0;
+  box-shadow: none;
+}
+
+.reveal pre code {
+  font-size: 0.62em;
+  line-height: 1.20;
+  max-height: 620px;
+  padding: 0.75em;
+  border-radius: 8px;
+}
+
+.reveal code:not(pre code) {
+  font-size: 0.88em;
+}
+
+/* Make callouts compact but visible from the back of the room. */
+.reveal .callout {
+  font-size: 0.73em;
+  margin: 0.45em 0;
+  border-radius: 8px;
+}
+
+.reveal .callout-title-container {
+  font-weight: 700;
+}
+
+/* Figures and diagrams should dominate the visual field. */
+.reveal img,
+.reveal svg {
+  max-height: 620px;
+  object-fit: contain;
+}
+
+.reveal .cell-output-display img,
+.reveal .cell-output-display svg {
+  max-height: 590px;
+}
+
+.reveal .mermaid {
+  font-size: 0.76em;
+}
+
+/* Title slide */
+.reveal .title-slide h1,
+.reveal #title-slide h1 {
+  font-size: 2.15em;
+  line-height: 1.02;
+  margin-bottom: 0.28em;
+}
+
+.reveal .title-slide .subtitle,
+.reveal #title-slide .subtitle {
+  font-size: 1.10em;
+  line-height: 1.25;
+  max-width: 1150px;
+}
+
+.reveal .title-slide .author,
+.reveal .title-slide .date,
+.reveal #title-slide .author,
+.reveal #title-slide .date {
+  font-size: 0.78em;
+}
+
+/* Section-divider slides generated from level-1 headings. */
+.reveal section.level1 > h1 {
+  font-size: 2.0em;
+  margin-top: 1.8em;
+  max-width: 1250px;
+}
+
+/* Slide numbers must be visible but unobtrusive. */
+.reveal .slide-number {
+  font-size: 18px !important;
+  background: rgba(255,255,255,0.88);
+  color: #334e68;
+}
+
+/* Avoid tiny captions on projected figures. */
+.reveal .figure-caption,
+.reveal figcaption {
+  font-size: 0.58em;
+  line-height: 1.15;
+}
+
+/* Slightly tighter math so equations remain readable and centered. */
+.reveal .MathJax,
+.reveal mjx-container {
+  font-size: 1.04em !important;
+}
+
+/* Utility classes usable in the qmd when a slide needs special sizing. */
+.reveal .small-text { font-size: 0.72em; }
+.reveal .tiny-text { font-size: 0.60em; }
+.reveal .big-text { font-size: 1.18em; }
+.reveal .center-text { text-align: center; }

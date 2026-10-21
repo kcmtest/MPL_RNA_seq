@@ -1,0 +1,2976 @@
+---
+title: "RNA-seq Data Analysis Workshop"
+subtitle: "From sequencing reads to differential expression, ontology and pathway enrichment"
+author: "Krushna Chandra Murmu"
+institute: "Bioinformatics Specialist, Premas Life Sciences"
+date: today
+
+format:
+  revealjs:
+    css: rnaseq-projector-large-mermaid.css
+    theme: simple
+    width: 1600
+    height: 900
+    margin: 0.045
+    center: false
+    slide-number: false
+    progress: true
+    controls: true
+    navigation-mode: linear
+    transition: fade
+    background-transition: fade
+    incremental: true
+    toc: false
+    code-fold: false
+    code-line-numbers: false
+    code-overflow: wrap
+    chalkboard: true
+    auto-stretch: true
+    scrollable: true
+    include-in-header:
+      text: |
+        <style>
+        :root {
+          --blue: #165DAD;
+          --dark: #10243E;
+          --soft: #F3F7FB;
+          --border: #D8E4F0;
+          --green: #3A9D5D;
+          --warm: #FFF7E8;
+        }
+        .reveal { font-size: 34px; }
+        .reveal h1 { font-size: 2.05em; color: var(--dark); }
+        .reveal h2 { font-size: 1.55em; color: var(--dark); }
+        .reveal h3 { font-size: 1.05em; }
+        .reveal p, .reveal li { line-height: 1.35; }
+        .reveal strong { color: var(--blue); }
+        .reveal pre code { font-size: 0.82em; line-height: 1.25; max-height: 600px; }
+        .reveal table { font-size: 0.78em; }
+        .module-card, .concept-card, .problem-card, .takehome-card {
+          border: 1px solid var(--border);
+          border-left: 10px solid var(--blue);
+          border-radius: 16px;
+          background: var(--soft);
+          padding: 18px 22px;
+          margin: 10px 0 18px 0;
+          box-shadow: 0 4px 14px rgba(16,36,62,0.08);
+        }
+        .concept-card { min-height: 145px; }
+        .problem-card { background: var(--warm); border-left-color: #E59B2A; }
+        .takehome-card { background: #F5FAF6; border-left-color: var(--green); }
+        .module-card h3, .concept-card h3, .problem-card h3, .takehome-card h3 {
+          margin-top: 0; margin-bottom: 0.3em; color: var(--dark);
+        }
+        .big-flow { text-align:center; font-size:1.15em; font-weight:600; color:var(--dark); margin-top:1.2em; }
+        .mini-note { font-size:0.75em; color:#4B5E73; }
+        .smaller { font-size:0.78em; }
+        /* Projector safeguard: allow vertical scrolling on any overflowing slide. */
+        .reveal .slides section {
+          max-height: 900px;
+          overflow-y: auto !important;
+          overflow-x: hidden;
+          scrollbar-width: thin;
+        }
+
+        /* Mermaid projector sizing — matches the working test deck */
+        .reveal .mermaid {
+          width: 100%;
+          text-align: center;
+        }
+
+        .reveal .mermaid svg {
+          width: 92% !important;
+          max-width: 1250px !important;
+          max-height: 430px !important;
+          margin: 0 auto;
+        }
+
+        .reveal .mermaid .nodeLabel,
+        .reveal .mermaid .label {
+          font-size: 22px !important;
+        }
+
+        /* Workflow stages replace one another in the same screen area */
+        .workflow-area {
+          position: relative;
+          width: 100%;
+          min-height: 520px;
+          margin-top: 20px;
+        }
+
+        .workflow-stage {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+        }
+
+        .workflow-stage h3 {
+          text-align: center;
+          font-size: 1.15em;
+          color: #165DAD;
+          margin-bottom: 25px;
+        }
+
+
+
+        /* =========================================================
+           Animated RNA-seq slide badge
+           A C G T ▸ READ current / total
+           ========================================================= */
+        #rnaseq-slide-anim {
+          position: fixed;
+          top: 22px;
+          right: 34px;
+          z-index: 9999;
+          pointer-events: none;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 14px;
+          border: 1px solid rgba(22, 93, 173, 0.25);
+          border-radius: 999px;
+          background: rgba(255,255,255,0.94);
+          box-shadow: 0 3px 12px rgba(16,36,62,0.10);
+          font-family: "DejaVu Sans Mono", "Courier New", monospace;
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          color: #486581;
+          opacity: 0.82;
+        }
+
+        #rnaseq-slide-anim .base {
+          display: inline-block;
+          min-width: 1ch;
+          text-align: center;
+        }
+
+        #rnaseq-slide-anim .seq-arrow {
+          color: #165DAD;
+          opacity: 0.8;
+        }
+
+        #rnaseq-slide-anim .read-label {
+          color: #165DAD;
+          font-size: 0.78em;
+          letter-spacing: 0.08em;
+        }
+
+        #rnaseq-slide-counter {
+          display: inline-block;
+          min-width: 72px;
+          text-align: center;
+          color: #10243E;
+          font-weight: 800;
+        }
+
+        #rnaseq-slide-anim.is-playing {
+          animation: rnaseqBadgeIn 1.05s ease-out both;
+        }
+
+        #rnaseq-slide-anim.is-playing .base:nth-child(1) {
+          animation: rnaseqBasePop 0.48s ease-out 0.00s both;
+        }
+        #rnaseq-slide-anim.is-playing .base:nth-child(2) {
+          animation: rnaseqBasePop 0.48s ease-out 0.08s both;
+        }
+        #rnaseq-slide-anim.is-playing .base:nth-child(3) {
+          animation: rnaseqBasePop 0.48s ease-out 0.16s both;
+        }
+        #rnaseq-slide-anim.is-playing .base:nth-child(4) {
+          animation: rnaseqBasePop 0.48s ease-out 0.24s both;
+        }
+
+        #rnaseq-slide-anim.is-playing .seq-arrow {
+          animation: rnaseqArrowSweep 0.55s ease-out 0.28s both;
+        }
+
+        #rnaseq-slide-anim.is-playing .read-label {
+          animation: rnaseqReadReveal 0.50s ease-out 0.34s both;
+        }
+
+        #rnaseq-slide-anim.is-playing #rnaseq-slide-counter {
+          animation: rnaseqCounterFlip 0.62s ease-out 0.38s both;
+        }
+
+        @keyframes rnaseqBadgeIn {
+          0%   { opacity: 0; transform: translateY(-10px) scale(0.92); }
+          45%  { opacity: 1; transform: translateY(2px) scale(1.03); }
+          100% { opacity: 0.82; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes rnaseqBasePop {
+          0%   { opacity: 0; transform: translateY(-8px) rotate(-8deg) scale(0.72); }
+          65%  { opacity: 1; transform: translateY(2px) rotate(2deg) scale(1.12); }
+          100% { opacity: 1; transform: translateY(0) rotate(0) scale(1); }
+        }
+
+        @keyframes rnaseqArrowSweep {
+          0%   { opacity: 0; transform: translateX(-10px); }
+          100% { opacity: 0.8; transform: translateX(0); }
+        }
+
+        @keyframes rnaseqReadReveal {
+          0%   { opacity: 0; transform: translateX(-8px); }
+          100% { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes rnaseqCounterFlip {
+          0%   { opacity: 0; transform: translateY(-7px) scale(0.85); }
+          55%  { opacity: 1; transform: translateY(2px) scale(1.12); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* =========================================================
+           Premas Life Sciences logo — bottom-right on every slide
+
+           Put your logo in the SAME folder as the .qmd.
+           Then replace "premAS_logo.png" in include-after-body below
+           with your actual filename.
+           ========================================================= */
+        #premas-slide-logo {
+          position: fixed;
+          right: 34px;
+          bottom: 28px;
+          width: 155px;
+          max-width: 11vw;
+          max-height: 72px;
+          object-fit: contain;
+          object-position: right center;
+          z-index: 9998;
+          pointer-events: none;
+          opacity: 0.96;
+          padding: 5px 8px;
+          border-radius: 8px;
+          background: rgba(255,255,255,0.84);
+        }
+
+        @media (max-width: 1100px) {
+          #premas-slide-logo {
+            width: 125px;
+            max-height: 58px;
+          }
+          #rnaseq-slide-anim {
+            font-size: 16px;
+            right: 24px;
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          #rnaseq-slide-anim,
+          #rnaseq-slide-anim.is-playing,
+          #rnaseq-slide-anim.is-playing .base,
+          #rnaseq-slide-anim.is-playing .seq-arrow,
+          #rnaseq-slide-anim.is-playing .read-label,
+          #rnaseq-slide-anim.is-playing #rnaseq-slide-counter {
+            animation: none !important;
+          }
+        }
+
+        </style>
+
+    include-after-body:
+      text: |
+        <!--
+          LOGO PLACEHOLDER
+          Put your logo in the same folder as this QMD and change:
+          premAS_logo.png
+          to the exact logo filename.
+        -->
+        <img
+          id="premas-slide-logo"
+          src="premAS_logo.png"
+          alt="Premas Life Sciences logo"
+        >
+
+        <div id="rnaseq-slide-anim" aria-hidden="true">
+          <span class="base">A</span>
+          <span class="base">C</span>
+          <span class="base">G</span>
+          <span class="base">T</span>
+          <span class="seq-arrow">▸</span>
+          <span class="read-label">READ</span>
+          <span id="rnaseq-slide-counter">1 / 1</span>
+        </div>
+
+        <script>
+        (function () {
+          function setupRNASeqBadge() {
+            if (!window.Reveal || typeof window.Reveal.on !== "function") {
+              setTimeout(setupRNASeqBadge, 100);
+              return;
+            }
+
+            const badge = document.getElementById("rnaseq-slide-anim");
+            const counter = document.getElementById("rnaseq-slide-counter");
+
+            if (!badge || !counter) return;
+
+            function updateCounter() {
+              let current = 1;
+              let total = 1;
+
+              if (typeof window.Reveal.getSlidePastCount === "function") {
+                current = window.Reveal.getSlidePastCount() + 1;
+              }
+
+              if (typeof window.Reveal.getTotalSlides === "function") {
+                total = window.Reveal.getTotalSlides();
+              }
+
+              counter.textContent = current + " / " + total;
+            }
+
+            function replay() {
+              updateCounter();
+              badge.classList.remove("is-playing");
+              void badge.offsetWidth;
+              badge.classList.add("is-playing");
+            }
+
+            window.Reveal.on("ready", replay);
+            window.Reveal.on("slidechanged", replay);
+
+            replay();
+          }
+
+          setupRNASeqBadge();
+        })();
+        </script>
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: auto
+
+editor: source
+---
+
+# RNA-seq Data Analysis Workshop
+
+## From sequencing reads to biological interpretation
+
+::: big-flow
+**Biological question → RNA-seq → QC → Alignment / Quantification → Differential Expression → Functional Interpretation**
+:::
+
+::: {.takehome-card .fragment}
+### Workshop goal
+
+Understand the complete logic of bulk RNA-seq analysis and move from raw sequencing data to interpretable biological results.
+:::
+
+------------------------------------------------------------------------
+
+## Workshop roadmap
+
+::::::::::: columns
+:::::: {.column width="50%"}
+::: {.module-card .fragment}
+### Module 1 — RNA-seq fundamentals
+
+RNA biology • Library strategies • Reads • Genes • Transcripts
+:::
+
+::: {.module-card .fragment}
+### Module 2 — Experimental design
+
+Replicates • Metadata • Confounding • Design formula
+:::
+
+::: {.module-card .fragment}
+### Module 3 — FASTQ → Counts
+
+QC • Alignment • Quantification • Count matrix
+:::
+::::::
+
+:::::: {.column width="50%"}
+::: {.module-card .fragment}
+### Module 4 — Differential expression
+
+DESeq2 • Normalization • Statistics • DEG
+:::
+
+::: {.module-card .fragment}
+### Module 5 — Visualization
+
+PCA • Heatmap • MA plot • Volcano plot
+:::
+
+::: {.module-card .fragment}
+### Module 6 — Functional biology
+
+Annotation • GO • KEGG • GSEA • Interpretation
+:::
+::::::
+:::::::::::
+
+------------------------------------------------------------------------
+
+## How this workshop is organized
+
+:::: {.columns}
+
+::: {.column width="32%"}
+::: {.module-card .fragment}
+### 1 — Concepts first
+
+Understand **why** each RNA-seq analysis step is needed and what question it answers.
+
+No command memorization required.
+:::
+:::
+
+::: {.column width="32%"}
+::: {.module-card .fragment}
+### 2 — Shell session
+
+Later we will practice the command-line workflow:
+
+**FASTQ → QC → Alignment → BAM → Counts**
+:::
+:::
+
+::: {.column width="32%"}
+::: {.module-card .fragment}
+### 3 — R session
+
+Later we will practice:
+
+**Count matrix → DESeq2 → Plots → Annotation → Enrichment**
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+### Main presentation goal
+Build the biological and computational **mental model first**. The exact commands and R syntax come in dedicated technical sessions.
+:::
+
+------------------------------------------------------------------------
+
+## Learning objectives
+
+By the end of this workshop, participants should be able to:
+
+-   Explain the biological and computational logic of bulk RNA-seq.
+-   Recognize important experimental-design choices and common confounders.
+-   Understand FASTQ QC, alignment / pseudoalignment and quantification.
+-   Build and validate a gene-level count matrix.
+-   Run differential expression analysis using **DESeq2**.
+-   Interpret **log2 fold change**, **p-value** and **adjusted p-value**.
+-   Generate PCA, heatmap, MA and volcano plots.
+-   Perform **GO**, **KEGG** and **GSEA** analyses.
+
+------------------------------------------------------------------------
+
+## End-to-end RNA-seq workflow
+
+<div class="workflow-area">
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="0"}
+
+### Phase 1 — Experimental setup
+
+```{mermaid}
+flowchart LR
+    A[Biological question] --> B[Experimental design]
+    B --> C[RNA extraction]
+    C --> D[Library preparation]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="1"}
+
+### Phase 2 — Sequencing & primary analysis
+
+```{mermaid}
+flowchart LR
+    A[Library preparation] --> B[Sequencing]
+    B --> C[FASTQ QC]
+    C --> D[Alignment / Quantification]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="2"}
+
+### Phase 3 — Statistical analysis
+
+```{mermaid}
+flowchart LR
+    A[Alignment / Quantification] --> B[Gene count matrix]
+    B --> C[DESeq2]
+    C --> D[Differential expression]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="3"}
+
+### Phase 4 — Biological interpretation
+
+```{mermaid}
+flowchart LR
+    A[Differential expression] --> B[Visualization]
+    B --> C[GO / KEGG / GSEA]
+    C --> D[Biological interpretation]
+```
+
+:::
+
+</div>
+
+------------------------------------------------------------------------
+
+# Module 1 — RNA-seq Fundamentals
+
+## What does RNA-seq measure?
+
+::::::: columns
+:::: {.column width="52%"}
+::: {.concept-card .fragment}
+### Biological signal
+
+RNA-seq samples RNA molecules present in a biological specimen and converts them into sequenceable libraries.
+
+**RNA abundance → fragments → reads → mapped fragments → gene/transcript abundance**
+:::
+::::
+
+:::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Important limitation
+
+RNA-seq does **not** directly count intact RNA molecules.
+
+Observed counts can be influenced by library preparation, GC content, sequencing depth, RNA quality and mapping ambiguity.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## What can bulk RNA-seq tell us?
+
+:::::::::::: columns
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Expression
+
+Which genes are expressed?
+:::
+
+::: {.concept-card .fragment}
+### Sample relationships
+
+Do replicates cluster together?
+:::
+:::::
+
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Differential expression
+
+Which genes change between conditions?
+:::
+
+::: {.concept-card .fragment}
+### Quality control
+
+Are there outliers or batch effects?
+:::
+:::::
+
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Pathways
+
+Which biological programs are enriched?
+:::
+
+::: {.concept-card .fragment}
+### Phenotype
+
+Which gene programs characterize the phenotype?
+:::
+:::::
+::::::::::::
+
+------------------------------------------------------------------------
+
+## Bulk RNA-seq vs single-cell RNA-seq
+
+| Feature             | Bulk RNA-seq       | scRNA-seq                        |
+|--------------------|--------------------|--------------------------------|
+| Unit measured       | Sample / tissue    | Individual cell / nucleus        |
+| Main output         | Average expression | Cell-level expression matrix     |
+| Depth per unit      | High               | Lower per cell                   |
+| Typical question    | Condition-level DE | Cell types, states, trajectories |
+| Complexity          | Moderate           | High                             |
+| Composition effects | Can confound DE    | Can be modeled explicitly        |
+
+------------------------------------------------------------------------
+
+## Common RNA-seq library strategies
+
+::::::::: columns
+::::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Poly(A) selection
+
+Enriches polyadenylated RNA and is commonly used for mRNA profiling.
+:::
+
+::: {.concept-card .fragment}
+### rRNA depletion
+
+Removes ribosomal RNA while retaining a broader range of RNA species.
+:::
+:::::
+
+::::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Stranded libraries
+
+Preserve transcript-strand information and improve assignment in overlapping loci.
+:::
+
+::: {.concept-card .fragment}
+### Paired-end sequencing
+
+Improves mapping across splice junctions and transcript structures.
+:::
+:::::
+:::::::::
+
+------------------------------------------------------------------------
+
+# Module 2 — Experimental Design
+
+## The most important analysis step happens before sequencing
+
+::: {.problem-card .fragment}
+### A sophisticated statistical model cannot rescue a fundamentally confounded experiment.
+:::
+
+-   What is the biological unit of replication?
+-   What is the primary comparison?
+-   Are replicates independent?
+-   Are important covariates recorded?
+-   Is batch balanced across conditions?
+-   Is the design paired, longitudinal or factorial?
+
+------------------------------------------------------------------------
+
+## Biological vs technical replicates
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Biological replicates
+
+Independent biological samples that capture biological variability and support inference beyond the samples measured.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Technical replicates
+
+Repeated measurement of the **same** biological material and mainly characterize technical variability.
+:::
+::::
+:::::::
+
+::: {.takehome-card .fragment}
+Three sequencing lanes from the same RNA extraction are **not** three biological replicates.
+:::
+
+------------------------------------------------------------------------
+
+## Confounding example
+
+| Sample | Condition | Batch  |
+|--------|-----------|--------|
+| S1     | Control   | Batch1 |
+| S2     | Control   | Batch1 |
+| S3     | Treated   | Batch2 |
+| S4     | Treated   | Batch2 |
+
+::: {.problem-card .fragment}
+### Problem
+
+Condition and batch are perfectly confounded. The model cannot determine whether the difference is caused by **condition** or **batch**.
+:::
+
+------------------------------------------------------------------------
+
+## Experimental design becomes a statistical model
+
+```{mermaid}
+flowchart LR
+    A[Biological question] --> B[Experimental factors]
+    B --> C[Metadata]
+    C --> D[Statistical design]
+    D --> E[Comparison / contrast]
+```
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Simple comparison
+One primary factor:
+
+**Control vs Treated**
+
+Conceptually:
+
+`expression ~ condition`
+:::
+:::
+
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### More complex experiment
+Other factors may need to be represented:
+
+**batch • patient • genotype • treatment • interaction**
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+The model should reflect how the experiment was actually performed — not just the comparison we hope to see.
+:::
+
+------------------------------------------------------------------------
+
+# Module 3 — FASTQ to Count Matrix
+
+## FASTQ anatomy
+
+``` text
+@READ_ID
+ACGTTGCA...
++
+FFFFFFFF...
+```
+
+The quality line encodes per-base **Phred quality scores**.
+
+$$
+Q = -10\log_{10}(P_{error})
+$$
+
+::: {.takehome-card .fragment}
+**Q30** corresponds to an estimated base-call error probability of **0.001**.
+:::
+
+------------------------------------------------------------------------
+
+## Raw-read QC
+
+::::: columns
+::: {.column width="50%"}
+-   Per-base sequence quality
+-   Sequence quality distribution
+-   Adapter content
+-   Overrepresented sequences
+:::
+
+::: {.column width="50%"}
+-   GC distribution
+-   Sequence duplication
+-   Read-length distribution
+-   Ambiguous bases
+:::
+:::::
+
+::: {.takehome-card .fragment}
+A FastQC warning is a **diagnostic signal**, not automatically a reason to discard a sample.
+:::
+
+------------------------------------------------------------------------
+
+# Alignment Concepts
+
+## Why do we align sequencing reads?
+
+::: {.takehome-card .fragment}
+### Core idea
+Sequencing gives us millions of short reads, but the reads themselves do not tell us **where in the genome or transcriptome they originated**.
+:::
+
+```{mermaid}
+flowchart LR
+    A[Sequencing reads] --> B[Alignment / mapping]
+    B --> C[Genomic coordinates]
+    C --> D[Gene / transcript assignment]
+    D --> E[Expression analysis]
+```
+
+::: {.fragment}
+Alignment answers the question:
+
+**"Where does each read best fit in the reference sequence?"**
+:::
+
+------------------------------------------------------------------------
+
+## DNA alignment vs RNA alignment
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### DNA-seq alignment
+Reads are aligned directly to the **reference genome**.
+
+Typical applications:
+
+- Whole-genome sequencing
+- Whole-exome sequencing
+- Targeted panels
+- ChIP-seq
+- ATAC-seq
+
+Common aligners:
+
+**BWA-MEM2, Bowtie2, DRAGEN**
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### RNA-seq alignment
+Reads often span **exon–exon junctions**.
+
+Therefore, the aligner must be **splice-aware**.
+
+Typical aligners:
+
+**STAR, HISAT2, DRAGEN RNA**
+:::
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## Why RNA-seq needs a splice-aware aligner
+
+A genomic read may align continuously:
+
+```text
+Genome:
+ACTGACCTGACCTGACCTGACCTG
+        |||||||||||||
+Read:   CCTGACCTGACCT
+```
+
+But an RNA-seq read can span two exons:
+
+```text
+Exon 1                Exon 2
+|---------|          |---------|
+ACGTACGTAC          TGCATGCATG
+      \________________/
+          RNA read
+```
+
+::: {.takehome-card .fragment}
+The intron exists in the **genome**, but it has been removed from the mature RNA molecule.
+:::
+
+------------------------------------------------------------------------
+
+## What happens during RNA alignment?
+
+```{mermaid}
+flowchart LR
+    A[RNA-seq read] --> B[Search reference genome]
+    B --> C{Continuous match?}
+    C -->|Yes| D[Genomic alignment]
+    C -->|No| E[Search for splice junction]
+    E --> F[Split / spliced alignment]
+    F --> G[Aligned BAM]
+```
+
+::: {.fragment}
+A splice-aware aligner recognizes that one part of a read may map to one exon and the rest to another exon.
+:::
+
+------------------------------------------------------------------------
+
+## Example: exon–exon junction alignment
+
+```text
+Reference genome
+
+Exon 1        Intron                     Exon 2
+==========-----------------------------==========
+
+RNA-seq read
+
+       =============================>
+       part maps here      part maps here
+```
+
+::: {.fragment}
+In the BAM CIGAR string, skipped intronic sequence is often represented by **N**.
+:::
+
+Example:
+
+```text
+50M1000N50M
+```
+
+Meaning:
+
+- 50 bases aligned
+- 1000 genomic bases skipped as an intron
+- 50 more bases aligned
+
+------------------------------------------------------------------------
+
+## What reference files are needed?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Reference FASTA
+Contains the actual nucleotide sequence of the genome.
+
+Example:
+
+```text
+GRCh38.fa
+```
+
+Used to determine:
+
+**Where can the read align?**
+:::
+:::
+
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Annotation GTF / GFF
+Contains known gene and transcript structures.
+
+Example information:
+
+- gene coordinates
+- exon coordinates
+- transcript IDs
+- gene IDs
+- strand
+:::
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## FASTA vs GTF: different roles
+
+```{mermaid}
+flowchart TB
+    A[Reference FASTA] --> C[Genome sequence]
+    B[Annotation GTF] --> D[Gene / transcript structure]
+    C --> E[RNA alignment index]
+    D --> E
+    E --> F[Splice-aware alignment]
+```
+
+::: {.takehome-card .fragment}
+The **FASTA tells the aligner what sequence exists**.
+
+The **GTF tells the aligner where known genes, exons and splice junctions are located**.
+:::
+
+------------------------------------------------------------------------
+
+## What information is inside a GTF?
+
+A typical GTF line may look like:
+
+```text
+chr1  HAVANA  exon  11869  12227  .  +  .  gene_id "ENSG...";
+```
+
+Important fields include:
+
+- chromosome
+- feature type: gene / transcript / exon
+- start and end coordinates
+- strand
+- gene ID
+- transcript ID
+
+::: {.fragment}
+For gene-level counting, the annotation defines which aligned reads belong to which genes.
+:::
+
+------------------------------------------------------------------------
+
+## Why FASTA and GTF must match
+
+::: {.problem-card .fragment}
+### A common analysis failure
+Using a genome FASTA and annotation GTF from different builds or releases.
+:::
+
+Examples:
+
+```text
+FASTA: GRCh38
+GTF:   GRCh37
+```
+
+or:
+
+```text
+FASTA chromosome: chr1
+GTF chromosome:   1
+```
+
+::: {.takehome-card .fragment}
+Reference FASTA, GTF/GFF, chromosome naming and gene IDs should be mutually compatible.
+:::
+
+------------------------------------------------------------------------
+
+## How an aligner works conceptually
+
+```{mermaid}
+flowchart LR
+    A[Read] --> B[Seed / exact-match search]
+    B --> C[Candidate genomic locations]
+    C --> D[Score possible alignments]
+    D --> E[Best alignment]
+    E --> F[Mapping quality]
+```
+
+The aligner evaluates:
+
+- matches
+- mismatches
+- insertions / deletions
+- splice junctions
+- multiple possible locations
+
+------------------------------------------------------------------------
+
+## Unique mapping vs multi-mapping
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Unique mapping
+A read has one clearly best genomic location.
+
+This is generally easier to interpret.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Multi-mapping
+A read maps equally well to several locations.
+
+Common causes:
+
+- repetitive sequence
+- gene families
+- pseudogenes
+- paralogs
+:::
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## Mapping quality: how confident is the alignment?
+
+::: {.concept-card .fragment}
+### MAPQ
+Mapping quality reflects the confidence that a read has been placed at the correct genomic location.
+:::
+
+Conceptually:
+
+```text
+High MAPQ  → confident / unique alignment
+Low MAPQ   → ambiguous placement
+```
+
+::: {.fragment}
+MAPQ is **not the same as base quality**.
+
+- **Base quality** = confidence in the nucleotide call
+- **Mapping quality** = confidence in the read's genomic placement
+:::
+
+------------------------------------------------------------------------
+
+## What does an RNA aligner produce?
+
+```{mermaid}
+flowchart LR
+    A[FASTQ] --> B[STAR / HISAT2]
+    B --> C[Aligned SAM/BAM]
+    C --> D[Coordinate-sorted BAM]
+    D --> E[Gene counting]
+```
+
+Typical outputs include:
+
+- aligned BAM
+- mapping statistics
+- splice-junction information
+- unmapped reads
+- alignment log files
+
+------------------------------------------------------------------------
+
+## What is stored in the BAM file?
+
+Each aligned read can contain information such as:
+
+- read name
+- chromosome
+- genomic position
+- alignment flag
+- MAPQ
+- CIGAR string
+- mate information
+- sequence
+- quality values
+- optional tags
+
+::: {.takehome-card .fragment}
+The BAM file is the bridge between **raw sequencing reads** and downstream genomic interpretation.
+:::
+
+
+------------------------------------------------------------------------
+
+## SAM vs BAM
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### SAM
+
+**Sequence Alignment/Map**
+
+A human-readable text representation of aligned reads.
+
+Useful for understanding alignment fields and formats.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### BAM
+
+Binary compressed representation of SAM.
+
+Smaller, faster to process and commonly used for downstream analysis.
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+SAM and BAM contain the same core alignment information; BAM is the practical format used for large sequencing datasets.
+:::
+
+------------------------------------------------------------------------
+
+## How to read one alignment conceptually
+
+```text
+Read name     chromosome   position   MAPQ   CIGAR
+READ001       chr1         105234     60     50M
+```
+
+This tells us:
+
+- which read was aligned;
+- where it aligned;
+- how confident the placement is;
+- how the read matches the reference.
+
+::: {.fragment}
+For paired-end RNA-seq, additional fields describe the mate and fragment relationship.
+:::
+
+------------------------------------------------------------------------
+
+## What is the SAM flag?
+
+The SAM flag is a compact numeric code describing alignment properties.
+
+Examples of information encoded by flags include:
+
+- paired or single-end;
+- properly paired;
+- read mapped or unmapped;
+- mate mapped or unmapped;
+- forward or reverse strand;
+- first or second read in a pair;
+- secondary or supplementary alignment.
+
+::: {.takehome-card .fragment}
+The flag does **not** represent one property; it combines multiple yes/no properties into one integer.
+:::
+
+------------------------------------------------------------------------
+
+## CIGAR string: how the read aligns
+
+A CIGAR string summarizes how read bases relate to the reference.
+
+Common operations:
+
+| Symbol | Meaning |
+|---|---|
+| `M` | aligned match/mismatch |
+| `I` | insertion relative to reference |
+| `D` | deletion relative to reference |
+| `N` | skipped reference region, often an intron |
+| `S` | soft clipping |
+
+Example:
+
+```text
+50M1000N50M
+```
+
+means:
+
+**50 aligned bases → 1000 bp skipped intron → 50 aligned bases**
+
+------------------------------------------------------------------------
+
+## Why BAM sorting and indexing matter
+
+```{mermaid}
+flowchart LR
+    A[Aligned BAM] --> B[Coordinate sorting]
+    B --> C[BAM index]
+    C --> D[Fast regional access]
+    D --> E[QC / visualization / downstream tools]
+```
+
+Coordinate sorting places reads in genomic order.
+
+Indexing allows software to jump directly to a genomic region without scanning the whole file.
+
+------------------------------------------------------------------------
+
+## What does SAMtools do conceptually?
+
+SAMtools is commonly used to work with alignment files.
+
+```{mermaid}
+flowchart LR
+    A[SAM / BAM] --> B[SAMtools]
+    B --> C[View / filter]
+    B --> D[Sort]
+    B --> E[Index]
+    B --> F[Alignment statistics]
+```
+
+Typical roles include:
+
+- converting between SAM and BAM;
+- sorting alignments;
+- indexing BAM files;
+- filtering reads;
+- summarizing alignment properties.
+
+::: {.fragment}
+The exact commands belong in the **Shell technical session**.
+:::
+
+------------------------------------------------------------------------
+
+## Alignment QC before counting
+
+Before converting alignments into counts, ask:
+
+- What fraction of reads mapped?
+- How many mapped uniquely?
+- Are many reads multi-mapped?
+- Are paired-end reads behaving as expected?
+- Are splice junctions being detected?
+- Is there excessive rRNA or intergenic signal?
+- Are there obvious sample-to-sample abnormalities?
+
+::: {.takehome-card .fragment}
+A count matrix can only be trusted if the underlying alignments are biologically and technically plausible.
+:::
+
+------------------------------------------------------------------------
+
+## What role does the annotation play after alignment?
+
+Alignment tells us:
+
+**where the read maps**
+
+Annotation tells us:
+
+**what genomic feature exists at that location**
+
+```{mermaid}
+flowchart LR
+    A[Aligned read] --> C[Genomic coordinate]
+    B[GTF annotation] --> D[Gene / exon coordinates]
+    C --> E[Overlap]
+    D --> E
+    E --> F[Gene assignment]
+```
+
+------------------------------------------------------------------------
+
+## From aligned reads to gene assignment
+
+A read can overlap:
+
+- an exon from one gene;
+- multiple features;
+- no annotated feature;
+- an ambiguous region.
+
+The counting software applies assignment rules to determine whether the read contributes to a gene count.
+
+::: {.takehome-card .fragment}
+Counting is not simply “one mapped read = one gene”.
+:::
+
+------------------------------------------------------------------------
+
+## featureCounts concept
+
+```{mermaid}
+flowchart LR
+    A[Sorted BAM] --> C[featureCounts]
+    B[Annotation GTF] --> C
+    C --> D[Assign fragments to features]
+    D --> E[Gene-level counts]
+```
+
+Important concepts include:
+
+- single-end vs paired-end data;
+- strandedness;
+- feature type, usually exon;
+- gene identifier used for grouping;
+- ambiguous / multi-overlapping reads.
+
+::: {.fragment}
+The exact command-line options will be covered in the **Shell session**.
+:::
+
+------------------------------------------------------------------------
+
+## What happens to reads that cannot be assigned?
+
+Some reads may remain unassigned because they are:
+
+- intergenic;
+- intronic;
+- multi-mapping;
+- overlapping multiple genes;
+- inconsistent with strandedness;
+- below quality filters.
+
+::: {.takehome-card .fragment}
+The percentage of assigned reads is an important counting QC metric, not just the final gene-count table.
+:::
+
+------------------------------------------------------------------------
+
+## The alignment-to-count bridge
+
+```{mermaid}
+flowchart LR
+    A[FASTQ] --> B[Splice-aware alignment]
+    B --> C[Sorted + indexed BAM]
+    C --> D[Alignment QC]
+    D --> E[featureCounts]
+    F[GTF annotation] --> E
+    E --> G[Gene count matrix]
+```
+
+::: {.takehome-card .fragment}
+This is the key transition from **sequence-level evidence** to a **sample-by-gene expression matrix**.
+:::
+
+------------------------------------------------------------------------
+
+## STAR alignment workflow
+
+```{mermaid}
+flowchart LR
+    A[Reference FASTA + GTF] --> B[STAR genome index]
+    C[FASTQ reads] --> D[STAR alignment]
+    B --> D
+    D --> E[Aligned BAM]
+    D --> F[Alignment summary]
+    D --> G[Splice junctions]
+```
+
+------------------------------------------------------------------------
+
+## Why build an index?
+
+The aligner does not search the full genome from scratch for every read.
+
+::: {.concept-card .fragment}
+### Genome index
+A preprocessed data structure that allows rapid searching of the reference genome.
+:::
+
+Without an index:
+
+```text
+Read → scan huge genome repeatedly
+```
+
+With an index:
+
+```text
+Read → efficient lookup → candidate location
+```
+
+------------------------------------------------------------------------
+
+## Reference index must match the analysis
+
+::: {.problem-card .fragment}
+If the STAR index was built with one genome / annotation version and the analysis uses another annotation downstream, inconsistencies can appear.
+:::
+
+Keep track of:
+
+- reference genome build
+- annotation release
+- index build date
+- STAR version
+- chromosome naming convention
+
+------------------------------------------------------------------------
+
+## Alignment versus pseudoalignment
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Full alignment
+
+Examples:
+
+**STAR, HISAT2**
+
+Produces genomic coordinates.
+
+Useful when you need:
+
+- BAM files
+- splice junctions
+- transcript structure
+- coverage
+- variant / fusion-related workflows
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Pseudo / selective alignment
+
+Examples:
+
+**Salmon, kallisto**
+
+Focuses on transcript assignment rather than conventional genome alignment.
+
+Useful when the main goal is:
+
+- transcript abundance
+- fast expression quantification
+:::
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## When should we use which strategy?
+
+```{mermaid}
+flowchart TB
+    A[What is the analysis goal?] --> B{Need genome coordinates / BAM?}
+    B -->|Yes| C[STAR / HISAT2]
+    B -->|No| D{Main goal expression quantification?}
+    D -->|Yes| E[Salmon / kallisto]
+    D -->|No| F[Choose workflow based on downstream requirement]
+```
+
+------------------------------------------------------------------------
+
+## RNA-seq alignment QC: what should we inspect?
+
+:::: {.columns}
+
+::: {.column width="50%"}
+- Total input reads
+- Overall mapping rate
+- Uniquely mapped reads
+- Multi-mapped reads
+- Unmapped reads
+:::
+
+::: {.column width="50%"}
+- Splice-junction reads
+- Exonic / intronic distribution
+- rRNA contamination
+- Strand specificity
+- Gene-body coverage
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## What does a low mapping rate mean?
+
+::: {.problem-card .fragment}
+### Possible causes
+- wrong species
+- wrong genome build
+- poor read quality
+- adapter contamination
+- rRNA contamination
+- short reads
+- sample contamination
+- incorrect library assumptions
+:::
+
+::: {.takehome-card .fragment}
+Low mapping rate is a **symptom**, not a diagnosis.
+:::
+
+------------------------------------------------------------------------
+
+## After alignment: how do reads become gene counts?
+
+```{mermaid}
+flowchart LR
+    A[Aligned BAM] --> B[featureCounts / HTSeq]
+    C[Annotation GTF] --> B
+    B --> D[Read / fragment assignment]
+    D --> E[Gene count matrix]
+```
+
+The counting step asks:
+
+**Does this aligned read overlap an annotated gene feature?**
+
+------------------------------------------------------------------------
+
+## Why strandedness matters
+
+Some RNA-seq libraries preserve information about which strand produced the RNA.
+
+If strandedness is specified incorrectly during counting:
+
+- reads may be assigned to the wrong gene;
+- many valid reads may remain unassigned;
+- gene counts can be severely distorted.
+
+::: {.takehome-card .fragment}
+Always determine whether the library is **unstranded, forward-stranded or reverse-stranded**.
+:::
+
+------------------------------------------------------------------------
+
+## Alignment is not the end of QC
+
+```{mermaid}
+flowchart LR
+    A[FASTQ QC] --> B[Alignment QC]
+    B --> C[Counting QC]
+    C --> D[Sample-level QC]
+    D --> E[Differential expression]
+```
+
+Alignment QC tells us whether the sequencing reads behave as expected **relative to the chosen reference**.
+
+------------------------------------------------------------------------
+
+## Alignment: the full conceptual picture
+
+```{mermaid}
+flowchart LR
+    A[FASTQ reads] --> B[Splice-aware aligner]
+    C[Reference FASTA] --> B
+    D[Annotation GTF] --> B
+    B --> E[Aligned BAM]
+    E --> F[Alignment QC]
+    E --> G[featureCounts]
+    D --> G
+    G --> H[Gene count matrix]
+```
+
+::: {.takehome-card .fragment}
+### Main idea
+RNA-seq alignment connects raw reads to genomic coordinates while respecting exon–intron structure. The aligned reads are then combined with gene annotation to produce the count matrix used for downstream statistical analysis.
+:::
+
+
+
+
+
+## Alignment-based workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[FASTQ] --> B[STAR / HISAT2]
+    B --> C[Aligned BAM]
+    C --> D[featureCounts / HTSeq]
+    D --> E[Gene count matrix]
+```
+
+------------------------------------------------------------------------
+
+## Transcript-quantification workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[FASTQ] --> B[Salmon / kallisto]
+    B --> C[Transcript abundance]
+    C --> D[tximport]
+    D --> E[Gene-level matrix]
+```
+
+------------------------------------------------------------------------
+
+## Alignment / quantification QC
+
+::::: columns
+::: {.column width="50%"}
+-   Total input reads / fragments
+-   Mapping rate
+-   Uniquely mapped fraction
+-   Multimapping fraction
+-   rRNA contamination
+:::
+
+::: {.column width="50%"}
+-   Exonic / intronic / intergenic distribution
+-   Strandedness
+-   Gene-body coverage
+-   Library complexity
+-   Number of detected genes
+:::
+:::::
+
+------------------------------------------------------------------------
+
+# Module 4 — Count Matrix Concepts
+
+## What is a gene count matrix?
+
+| gene_id | Control_1 | Control_2 | Treated_1 | Treated_2 |
+|---|---:|---:|---:|---:|
+| Gene A | 125 | 141 | 511 | 480 |
+| Gene B | 2 | 0 | 1 | 3 |
+| Gene C | 882 | 910 | 420 | 401 |
+
+::: {.takehome-card .fragment}
+Rows represent **genes** and columns represent **samples**.
+
+Each value represents the number of reads or fragments assigned to a gene for that sample.
+:::
+
+------------------------------------------------------------------------
+
+## Before differential expression: validate the count matrix
+
+```{mermaid}
+flowchart LR
+    A[Count matrix] --> B[Sample names]
+    B --> C[Metadata matching]
+    C --> D[Library sizes]
+    D --> E[Low-count genes]
+    E --> F[Analysis-ready matrix]
+```
+
+Key checks:
+
+- Do sample names match the metadata?
+- Are all expected samples present?
+- Are library sizes broadly reasonable?
+- Are many genes completely uninformative?
+- Is the experimental grouping correct?
+
+::: {.fragment}
+These checks will be implemented later in the **R hands-on session**.
+:::
+
+------------------------------------------------------------------------
+
+# Module 5 — Statistical Testing for RNA-seq
+
+## What are we testing for each gene?
+
+For every gene, we ask whether the observed difference between conditions is larger than expected from biological and sampling variability.
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Null hypothesis
+
+There is **no systematic expression difference** between the groups.
+
+Conceptually:
+
+**H₀: effect = 0**
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Alternative hypothesis
+
+There **is evidence of an expression difference** between the groups.
+
+Conceptually:
+
+**H₁: effect ≠ 0**
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+RNA-seq differential expression is therefore a **gene-by-gene hypothesis-testing problem**, repeated across thousands of genes.
+:::
+
+------------------------------------------------------------------------
+
+## Effect size and statistical evidence are different
+
+A differential-expression result usually contains both:
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Effect size
+
+Usually summarized as:
+
+**log2 fold change**
+
+How large is the expression difference?
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Statistical evidence
+
+Usually summarized by:
+
+**p-value / adjusted p-value**
+
+How strongly do the data argue against the null hypothesis?
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+A tiny fold change can be statistically significant, and a large fold change can be uncertain.
+
+Interpret **effect size and uncertainty together**.
+:::
+
+------------------------------------------------------------------------
+
+## Why RNA-seq needs a count model
+
+RNA-seq counts are:
+
+- non-negative integers;
+- affected by sequencing depth;
+- biologically variable;
+- often more variable than a simple Poisson model allows.
+
+```{mermaid}
+flowchart LR
+    A[Observed counts] --> B[Mean expression]
+    A --> C[Library size]
+    A --> D[Biological variability]
+    A --> E[Sampling variability]
+```
+
+::: {.takehome-card .fragment}
+Both DESeq2 and edgeR model RNA-seq counts using the **negative binomial distribution**.
+:::
+
+------------------------------------------------------------------------
+
+## Mean and dispersion
+
+The negative binomial model separates two important ideas:
+
+```text
+Mean       → expected expression level
+Dispersion → extra variability around that mean
+```
+
+::: {.concept-card .fragment}
+### Dispersion
+
+Dispersion captures variability that is greater than expected from simple counting noise.
+
+Genes with the same mean expression can have different levels of biological variability.
+:::
+
+::: {.fragment}
+Reliable dispersion estimation is especially important when the number of biological replicates is limited.
+:::
+
+------------------------------------------------------------------------
+
+## Why borrow information across genes?
+
+Estimating variability independently for every gene can be unstable.
+
+Both major RNA-seq frameworks therefore use information across many genes to stabilize dispersion estimates.
+
+```{mermaid}
+flowchart LR
+    A[Gene-wise variability] --> C[Learn global trend]
+    B[Information across genes] --> C
+    C --> D[Stabilized dispersion estimates]
+    D --> E[More reliable testing]
+```
+
+::: {.takehome-card .fragment}
+The exact mathematical strategy differs between **DESeq2** and **edgeR**, but both use cross-gene information to improve inference.
+:::
+
+------------------------------------------------------------------------
+
+## A p-value is not the probability that a gene is truly differential
+
+The p-value asks:
+
+> If the null hypothesis were true, how surprising would data this extreme be?
+
+It does **not** directly tell us:
+
+- the probability that H₀ is true;
+- the biological importance of the gene;
+- the size of the effect.
+
+------------------------------------------------------------------------
+
+## Why multiple-testing correction is essential
+
+RNA-seq can test tens of thousands of genes simultaneously.
+
+If we tested:
+
+```text
+20,000 genes × p < 0.05
+```
+
+many apparently significant genes could occur by chance.
+
+```{mermaid}
+flowchart LR
+    A[Thousands of gene tests] --> B[Many raw p-values]
+    B --> C[Multiple-testing correction]
+    C --> D[Adjusted p-values / FDR]
+```
+
+------------------------------------------------------------------------
+
+## False Discovery Rate
+
+The commonly reported adjusted p-value controls the **false discovery rate (FDR)**.
+
+A threshold such as:
+
+```text
+padj < 0.05
+```
+
+means the analysis is controlling the expected proportion of false discoveries among the reported discoveries under the chosen procedure.
+
+::: {.takehome-card .fragment}
+For RNA-seq, report **adjusted p-values**, not only raw p-values.
+:::
+
+------------------------------------------------------------------------
+
+## Statistical significance is not biological significance
+
+A defensible interpretation considers:
+
+```{mermaid}
+flowchart LR
+    A[log2 fold change] --> D[Interpretation]
+    B[Adjusted p-value] --> D
+    C[Expression pattern / biology] --> D
+```
+
+Useful questions:
+
+- Is the effect large enough to matter biologically?
+- Is expression consistent across replicates?
+- Is the gene expressed at a meaningful level?
+- Does the result fit a coherent biological pattern?
+
+------------------------------------------------------------------------
+
+# DESeq2 and edgeR
+
+## Two major frameworks for count-based differential expression
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.module-card .fragment}
+### DESeq2
+
+Bioconductor package for negative-binomial generalized linear modeling.
+
+Commonly used for:
+
+- bulk RNA-seq;
+- multifactor designs;
+- contrasts;
+- Wald tests;
+- likelihood-ratio tests.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.module-card .fragment}
+### edgeR
+
+Bioconductor package for negative-binomial models with strong support for generalized linear models.
+
+Commonly used for:
+
+- bulk RNA-seq;
+- multifactor designs;
+- exact tests;
+- GLM likelihood-ratio tests;
+- quasi-likelihood testing.
+:::
+:::
+
+::::
+
+------------------------------------------------------------------------
+
+## What DESeq2 and edgeR have in common
+
+Both frameworks:
+
+- start from **raw gene-level counts**;
+- model counts using the **negative binomial distribution**;
+- account for library-size differences;
+- estimate gene-level dispersion;
+- support complex experimental designs;
+- perform gene-wise statistical tests;
+- correct for multiple testing.
+
+::: {.takehome-card .fragment}
+They share the same broad statistical problem, but differ in how several steps are estimated and tested.
+:::
+
+------------------------------------------------------------------------
+
+## Normalization: DESeq2 vs edgeR
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### DESeq2
+
+Common default:
+
+**median-of-ratios size factors**
+
+Goal:
+
+estimate relative library scaling while reducing sensitivity to highly expressed genes.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### edgeR
+
+Common approach:
+
+**TMM normalization**
+
+Trimmed Mean of M-values estimates scaling factors while reducing the impact of strongly changing or highly abundant genes.
+:::
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+Neither method turns counts into TPM/FPKM for hypothesis testing.
+
+They estimate scaling factors used inside the statistical model.
+:::
+
+------------------------------------------------------------------------
+
+## Dispersion estimation: conceptual difference
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### DESeq2
+
+Estimates gene-wise dispersion and shrinks noisy estimates toward a learned mean-dispersion trend.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### edgeR
+
+Estimates common/trended/tagwise dispersion and uses empirical-Bayes strategies to stabilize gene-level variability.
+:::
+:::
+
+::::
+
+::: {.fragment}
+The implementation differs, but the shared goal is the same:
+
+**avoid unreliable gene-by-gene variance estimates when replication is limited.**
+:::
+
+------------------------------------------------------------------------
+
+## Testing strategies differ
+
+### DESeq2
+
+Common choices:
+
+- **Wald test** — commonly used for individual coefficients / contrasts;
+- **Likelihood-ratio test (LRT)** — useful for comparing nested models.
+
+### edgeR
+
+Common choices:
+
+- **Exact test** — simple two-group comparisons;
+- **GLM likelihood-ratio test**;
+- **Quasi-likelihood F-test** — widely used for robust GLM inference.
+
+------------------------------------------------------------------------
+
+## Wald test concept
+
+The Wald test asks whether an estimated coefficient is sufficiently far from zero relative to its uncertainty.
+
+Conceptually:
+
+```text
+estimated effect
+----------------
+standard error
+```
+
+Large absolute values provide stronger evidence against the null hypothesis.
+
+::: {.fragment}
+In DESeq2, this is the common default for standard differential-expression contrasts.
+:::
+
+------------------------------------------------------------------------
+
+## Likelihood-ratio test concept
+
+The likelihood-ratio test compares:
+
+```text
+Full model
+vs
+Reduced model
+```
+
+Example concept:
+
+```text
+Full:    batch + condition
+Reduced: batch
+```
+
+Question:
+
+**Does including condition significantly improve the model?**
+
+::: {.takehome-card .fragment}
+LRTs are particularly useful when testing the overall contribution of a factor or comparing nested models.
+:::
+
+------------------------------------------------------------------------
+
+## edgeR quasi-likelihood concept
+
+edgeR's quasi-likelihood framework adds an additional layer for modeling uncertainty in dispersion.
+
+Conceptually:
+
+```{mermaid}
+flowchart LR
+    A[Counts] --> B[Negative-binomial GLM]
+    B --> C[Dispersion uncertainty]
+    C --> D[Quasi-likelihood inference]
+```
+
+::: {.takehome-card .fragment}
+This provides a conservative and flexible testing framework, especially for complex designs.
+:::
+
+------------------------------------------------------------------------
+
+## Fold-change shrinkage
+
+Large fold changes from very low-count or noisy genes can be unstable.
+
+### DESeq2
+
+Can apply **log2 fold-change shrinkage** after model fitting to improve effect-size estimation and ranking.
+
+### edgeR
+
+Provides related approaches for testing biologically meaningful effect sizes, including threshold-based testing such as `glmTreat`.
+
+::: {.takehome-card .fragment}
+Shrinkage or threshold testing changes how we interpret **effect size**, not simply whether a raw p-value is small.
+:::
+
+------------------------------------------------------------------------
+
+## DESeq2 vs edgeR — conceptual summary
+
+| Concept | DESeq2 | edgeR |
+|---|---|---|
+| Count model | Negative binomial | Negative binomial |
+| Typical normalization | Median-of-ratios | TMM |
+| Dispersion strategy | Trend + shrinkage | Empirical-Bayes common/trended/tagwise |
+| Common simple test | Wald | Exact test / GLM |
+| Complex designs | GLM | GLM |
+| Model comparison | LRT | LRT |
+| Robust GLM inference | Wald/LRT framework | Quasi-likelihood framework |
+| Effect-size refinement | LFC shrinkage | Treat/threshold-based approaches |
+
+------------------------------------------------------------------------
+
+## Which should we use?
+
+::: {.takehome-card .fragment}
+There is no universal rule that one package is always better.
+:::
+
+Choose based on:
+
+- experimental design;
+- analysis conventions in your group;
+- desired testing framework;
+- reproducibility;
+- familiarity with diagnostics;
+- consistency across a project.
+
+::: {.fragment}
+For this workshop, we will implement the practical R workflow using **DESeq2**, while understanding how **edgeR addresses the same statistical problem using related but different strategies**.
+:::
+
+------------------------------------------------------------------------
+
+# Module 5 — DESeq2 Fundamentals
+
+## Why not compare raw counts directly?
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Observed count] --> B[Biological expression]
+    A --> C[Sequencing depth]
+    A --> D[Sampling variation]
+    A --> E[Technical effects]
+```
+
+DESeq2 models counts using a **negative binomial** framework.
+
+------------------------------------------------------------------------
+
+## DESeq2 model
+
+$$
+K_{ij} \sim NB(\mu_{ij}, \alpha_i)
+$$
+
+-   $K_{ij}$ = observed count for gene $i$ in sample $j$
+-   $\mu_{ij}$ = expected count
+-   $\alpha_i$ = gene-specific dispersion
+
+------------------------------------------------------------------------
+
+## DESeq2 workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Raw counts] --> B[DESeqDataSet]
+    B --> C[Size factors]
+    C --> D[Dispersion]
+    D --> E[Model fitting]
+    E --> F[Hypothesis testing]
+    F --> G[DE results]
+```
+
+------------------------------------------------------------------------
+
+## Interpreting log2 fold change
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Positive log2FC
+
+Higher expression in **Treated** relative to **Control**.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Negative log2FC
+
+Lower expression in **Treated** relative to **Control**.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## Multiple-testing correction
+
+A common workshop threshold:
+
+``` text
+padj < 0.05
+AND
+|log2FoldChange| >= 1
+```
+
+::: mini-note
+This is a reporting threshold, not a universal biological law.
+:::
+
+------------------------------------------------------------------------
+
+# Module 6 — Exploratory Analysis
+
+## Why transform counts for visualization?
+
+Raw counts are appropriate for count-based statistical modeling, but their variance strongly depends on abundance.
+
+```{mermaid}
+flowchart LR
+    A[Raw counts] --> B[Variance-stabilizing transformation]
+    B --> C[PCA]
+    B --> D[Sample distances]
+    B --> E[Heatmaps]
+```
+
+::: {.takehome-card .fragment}
+Transformation is mainly used to make **sample relationships and expression patterns easier to visualize**.
+
+It does not replace the raw-count model used by DESeq2.
+:::
+
+------------------------------------------------------------------------
+
+## PCA — what question does it answer?
+
+::: {.concept-card .fragment}
+### Principal Component Analysis
+PCA summarizes thousands of genes into a few major axes of variation.
+:::
+
+Ask:
+
+- Do biological replicates cluster together?
+- Is condition a major source of variation?
+- Is there a batch effect?
+- Is one sample behaving unusually?
+
+```{mermaid}
+flowchart LR
+    A[Thousands of genes] --> B[Major variation patterns]
+    B --> C[PC1]
+    B --> D[PC2]
+    C --> E[Sample relationships]
+    D --> E
+```
+
+------------------------------------------------------------------------
+
+## Sample-distance heatmap
+
+A sample-distance heatmap asks:
+
+**How similar or dissimilar is every sample to every other sample?**
+
+::: {.takehome-card .fragment}
+Expected pattern:
+
+**biological replicates should usually be more similar to each other than to unrelated conditions.**
+:::
+
+Useful for detecting:
+
+- outliers;
+- sample swaps;
+- unexpected subgroups;
+- batch structure.
+
+------------------------------------------------------------------------
+
+# Module 7 — Differential Expression Results
+
+## MA plot — abundance vs effect size
+
+```{mermaid}
+flowchart LR
+    A[Each gene] --> B[Mean expression]
+    A --> C[log2 fold change]
+    B --> D[MA plot]
+    C --> D
+```
+
+The MA plot helps us ask:
+
+- Are large fold changes concentrated among low-count genes?
+- Is the fold-change distribution centered appropriately?
+- Which genes pass the statistical threshold?
+
+::: {.takehome-card .fragment}
+**M = log ratio / fold change**
+
+**A = average abundance**
+:::
+
+------------------------------------------------------------------------
+
+## Volcano plot — effect size + statistical evidence
+
+A volcano plot combines two dimensions:
+
+:::: {.columns}
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### X-axis
+**log2 fold change**
+
+How large is the expression difference?
+:::
+:::
+
+::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Y-axis
+**statistical evidence**
+
+How strong is the evidence against the null hypothesis?
+:::
+:::
+::::
+
+::: {.takehome-card .fragment}
+A volcano plot is a useful summary, but interpretation should still consider sample-level expression patterns and biological context.
+:::
+
+------------------------------------------------------------------------
+
+## Heatmap — expression patterns across samples
+
+Heatmaps are useful for visualizing coordinated expression patterns across a selected set of genes.
+
+```{mermaid}
+flowchart LR
+    A[Selected genes] --> B[Transformed expression]
+    B --> C[Row scaling]
+    C --> D[Clustering]
+    D --> E[Heatmap]
+```
+
+Look for:
+
+- separation between conditions;
+- similarity among replicates;
+- gene clusters;
+- unexpected sample behavior.
+
+------------------------------------------------------------------------
+
+# Module 8 — Gene Annotation
+
+## Why identifier conversion matters
+
+::::::::: columns
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Ensembl
+
+`ENSG...`
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Entrez
+
+Numeric gene identifier
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Symbol
+
+Example: `TP53`
+:::
+::::
+:::::::::
+
+::: {.takehome-card .fragment}
+Never assume every identifier maps one-to-one.
+:::
+
+------------------------------------------------------------------------
+
+## Gene annotation connects statistical results to biology
+
+```{mermaid}
+flowchart LR
+    A[Ensembl ID] --> D[Gene annotation]
+    B[Entrez ID] --> D
+    C[Gene symbol] --> D
+    D --> E[Functional databases]
+    E --> F[GO / KEGG / pathway analysis]
+```
+
+::: {.takehome-card .fragment}
+Identifier conversion is not always one-to-one. Some identifiers can fail to map, map to multiple records, or differ across annotation releases.
+:::
+
+The exact mapping workflow will be demonstrated later in the **R session**.
+
+------------------------------------------------------------------------
+
+# Module 9 — Functional Enrichment Concepts
+
+## From genes to biology
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Differential expression] --> B[Gene list / ranked list]
+    B --> C[Functional gene sets]
+    C --> D[GO / KEGG / GSEA]
+    D --> E[Biological themes]
+```
+
+------------------------------------------------------------------------
+
+## ORA vs GSEA
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.module-card .fragment}
+### ORA
+
+**Input:** selected significant gene list
+
+**Question:** Are some gene sets represented more than expected?
+
+**Examples:** GO and KEGG enrichment
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.module-card .fragment}
+### GSEA
+
+**Input:** ranked list of many / all tested genes
+
+**Question:** Do pathway genes accumulate toward one end of the ranking?
+
+**Advantage:** detects coordinated modest shifts
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## Gene Ontology
+
+::::::::: columns
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### BP — Biological Process
+
+What biological program is occurring?
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### MF — Molecular Function
+
+What molecular activity is performed?
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### CC — Cellular Component
+
+Where is the gene product acting?
+:::
+::::
+:::::::::
+
+------------------------------------------------------------------------
+
+## ORA background matters
+
+::: {.takehome-card .fragment}
+The ORA **background / universe** should represent genes that had a reasonable opportunity to be selected — not automatically every annotated gene in the genome.
+:::
+
+------------------------------------------------------------------------
+
+# Module 10 — GO Enrichment
+
+## How GO over-representation analysis works
+
+```{mermaid}
+flowchart LR
+    A[Significant genes] --> C[Compare with background]
+    B[Tested gene universe] --> C
+    C --> D[GO categories]
+    D --> E[Enriched biological themes]
+```
+
+Key questions:
+
+- What gene list are we testing?
+- What is the correct background?
+- Which GO domain are we using: BP, MF or CC?
+- Are enriched terms redundant or biologically coherent?
+
+::: {.fragment}
+The exact `clusterProfiler` workflow will be covered in the **R enrichment session**.
+:::
+
+------------------------------------------------------------------------
+
+## How to read enrichment plots
+
+Common enrichment views include:
+
+:::: {.columns}
+::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Dot plot
+Term significance, gene ratio and gene count
+:::
+:::
+
+::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Bar plot
+Simple ranking of enriched terms
+:::
+:::
+
+::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Network / tree
+Relationships among redundant or related terms
+:::
+:::
+::::
+
+::: {.takehome-card .fragment}
+Do not interpret every significant GO term as an independent biological discovery.
+:::
+
+------------------------------------------------------------------------
+
+# Module 11 — Up- and Down-regulated Biology
+
+## Why analyze directions separately?
+
+```{mermaid}
+flowchart TB
+    A[Differentially expressed genes] --> B[Up-regulated genes]
+    A --> C[Down-regulated genes]
+    B --> D[Activated / increased programs]
+    C --> E[Suppressed / decreased programs]
+```
+
+::: {.takehome-card .fragment}
+Combining both directions can mix opposing biological processes and make interpretation harder.
+:::
+
+------------------------------------------------------------------------
+
+# Module 12 — KEGG Pathway Enrichment
+
+## What does KEGG enrichment add?
+
+GO organizes genes into ontology terms.
+
+KEGG organizes genes into **biochemical, signaling and disease-associated pathway maps**.
+
+```{mermaid}
+flowchart LR
+    A[Gene list] --> B[KEGG pathway sets]
+    B --> C[Statistical enrichment]
+    C --> D[Pathway-level interpretation]
+```
+
+::: {.fragment}
+The same principles still matter:
+
+**appropriate gene list • appropriate background • multiple-testing correction • biological context**
+:::
+
+------------------------------------------------------------------------
+
+# Module 13 — GSEA
+
+## Why GSEA?
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### ORA
+
+Requires a threshold that divides genes into selected and not selected.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### GSEA
+
+Uses a ranked list and asks whether genes from a pathway accumulate toward the top or bottom.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## GSEA requires a ranked gene list
+
+Instead of selecting only significant genes, GSEA uses a ranked continuum.
+
+```{mermaid}
+flowchart LR
+    A[Most positive genes] --> B[Ranked gene list]
+    C[Most negative genes] --> B
+    B --> D[Gene-set enrichment score]
+    D --> E[NES + significance]
+```
+
+Common ranking choices include a model-derived statistic that captures **direction and evidence**.
+
+::: {.fragment}
+The ranking implementation will be demonstrated later in the **R enrichment session**.
+:::
+
+------------------------------------------------------------------------
+
+## Understanding NES
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Positive NES
+
+Gene set enriched toward the **positive / top** end of the ranking.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Negative NES
+
+Gene set enriched toward the **negative / bottom** end of the ranking.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+# Module 14 — Interpretation Framework
+
+## A defensible interpretation sequence
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Technical QC] --> B[Sample relationships]
+    B --> C[Correct contrast]
+    C --> D[Effect size + uncertainty]
+    D --> E[Individual genes]
+    E --> F[Pathway-level signals]
+    F --> G[Biological context]
+    G --> H[Validation]
+```
+
+------------------------------------------------------------------------
+
+## Avoid common interpretation errors
+
+::::: columns
+::: {.column width="50%"}
+-   Using `p < 0.05` without multiple-testing correction.
+-   Treating tiny significant fold changes as automatically important.
+-   Using TPM / FPKM directly as DESeq2 input.
+-   Ignoring PCA outliers.
+:::
+
+::: {.column width="50%"}
+-   Ignoring batch or paired structure.
+-   Treating every GO term as an independent discovery.
+-   Using an inappropriate ORA background.
+-   Ignoring failed or duplicated ID mappings.
+:::
+:::::
+
+------------------------------------------------------------------------
+
+# Module 15 — Troubleshooting
+
+## Low mapping rate
+
+::: {.problem-card .fragment}
+### Possible causes
+
+Wrong reference • contamination • poor read quality • adapters • short inserts • rRNA abundance • species mismatch • library issue
+:::
+
+------------------------------------------------------------------------
+
+## PCA outlier
+
+::: {.problem-card .fragment}
+### Check
+
+Sample identity • library size • mapping rate • RNA quality • batch • contamination • biological heterogeneity • metadata accuracy
+:::
+
+::: {.takehome-card .fragment}
+Do not remove an outlier simply because it makes the desired comparison look cleaner.
+:::
+
+------------------------------------------------------------------------
+
+## Too many or no DE genes
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.problem-card .fragment}
+### Too many DE genes
+
+Strong biology • batch confounding • composition shift • wrong contrast • underestimated variability
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.problem-card .fragment}
+### No significant DE genes
+
+Weak effect • low power • high variability • wrong contrast • technical noise • poor design
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+# Module 16 — Reproducibility
+
+## What should be recorded?
+
+A reproducible RNA-seq analysis should preserve:
+
+- reference genome build;
+- annotation release;
+- software and package versions;
+- sample metadata;
+- QC reports;
+- analysis parameters;
+- scripts / notebooks;
+- result tables and figures.
+
+```{mermaid}
+flowchart LR
+    A[Data] --> E[Reproducible analysis]
+    B[Metadata] --> E
+    C[Software versions] --> E
+    D[Commands / scripts] --> E
+    E --> F[Traceable results]
+```
+
+------------------------------------------------------------------------
+
+# Technical Sessions
+
+## Session A — Shell / Command-line RNA-seq workflow
+
+This will be handled in a **separate technical deck**.
+
+```{mermaid}
+flowchart LR
+    A[FASTQ] --> B[FastQC / MultiQC]
+    B --> C[STAR / HISAT2]
+    C --> D[BAM]
+    D --> E[featureCounts]
+    E --> F[Gene count matrix]
+```
+
+Topics:
+
+- Linux navigation and file handling;
+- compressed FASTQ inspection;
+- command-line QC;
+- reference/index handling;
+- alignment commands;
+- BAM inspection;
+- gene counting;
+- logs and troubleshooting.
+
+------------------------------------------------------------------------
+
+## Session B — R analysis workflow
+
+This will also be handled in a **separate technical deck**.
+
+```{mermaid}
+flowchart LR
+    A[Count matrix + metadata] --> B[DESeq2]
+    B --> C[PCA / Heatmap]
+    B --> D[DE genes]
+    D --> E[Annotation]
+    E --> F[GO / KEGG / GSEA]
+```
+
+Topics:
+
+- R fundamentals and packages;
+- importing counts and metadata;
+- filtering and transformations;
+- DESeq2 modeling and contrasts;
+- PCA, MA, volcano and heatmaps;
+- gene-ID conversion;
+- enrichment analysis;
+- exporting results.
+
+------------------------------------------------------------------------
+
+# Concept Review
+
+## Can you explain the complete RNA-seq logic?
+
+Try to explain this workflow **without commands or code**:
+
+```{mermaid}
+flowchart LR
+    A[Biological question] --> B[Experimental design]
+    B --> C[FASTQ]
+    C --> D[QC]
+    D --> E[Alignment / quantification]
+    E --> F[Count matrix]
+    F --> G[Differential expression]
+    G --> H[Functional interpretation]
+```
+
+Questions to ask at every stage:
+
+- What is the biological question?
+- What can go wrong here?
+- What evidence tells us the step worked?
+- What information is passed to the next stage?
+
+------------------------------------------------------------------------
+
+# Final Take-home Messages
+
+## Five principles to remember
+
+::: {.takehome-card .fragment}
+### 1. Experimental design determines what can be inferred.
+:::
+
+::: {.takehome-card .fragment}
+### 2. QC is continuous — from FASTQ through biological interpretation.
+:::
+
+::: {.takehome-card .fragment}
+### 3. Use raw counts for count-based differential-expression models.
+:::
+
+::: {.takehome-card .fragment}
+### 4. Effect size, uncertainty and sample-level patterns must be interpreted together.
+:::
+
+::: {.takehome-card .fragment}
+### 5. Enrichment summarizes gene-level results; it does not prove pathway activation.
+:::

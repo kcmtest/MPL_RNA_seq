@@ -1,0 +1,1361 @@
+---
+title: "RNA-seq Data Analysis Workshop"
+subtitle: "From sequencing reads to differential expression, ontology and pathway enrichment"
+author: "Workshop Training Material"
+date: today
+
+format:
+  revealjs:
+    theme: simple
+    width: 1600
+    height: 900
+    margin: 0.045
+    center: false
+    slide-number: "c/t"
+    show-slide-number: all
+    progress: true
+    controls: true
+    navigation-mode: linear
+    transition: fade
+    background-transition: fade
+    incremental: true
+    toc: false
+    code-fold: false
+    code-line-numbers: false
+    code-overflow: wrap
+    chalkboard: true
+    auto-stretch: true
+    scrollable: true
+    include-in-header:
+      text: |
+        <style>
+        :root {
+          --blue: #165DAD;
+          --dark: #10243E;
+          --soft: #F3F7FB;
+          --border: #D8E4F0;
+          --green: #3A9D5D;
+          --warm: #FFF7E8;
+        }
+        .reveal { font-size: 34px; }
+        .reveal h1 { font-size: 2.05em; color: var(--dark); }
+        .reveal h2 { font-size: 1.55em; color: var(--dark); }
+        .reveal h3 { font-size: 1.05em; }
+        .reveal p, .reveal li { line-height: 1.35; }
+        .reveal strong { color: var(--blue); }
+        .reveal pre code { font-size: 0.82em; line-height: 1.25; max-height: 600px; }
+        .reveal table { font-size: 0.78em; }
+        .module-card, .concept-card, .problem-card, .takehome-card {
+          border: 1px solid var(--border);
+          border-left: 10px solid var(--blue);
+          border-radius: 16px;
+          background: var(--soft);
+          padding: 18px 22px;
+          margin: 10px 0 18px 0;
+          box-shadow: 0 4px 14px rgba(16,36,62,0.08);
+        }
+        .concept-card { min-height: 145px; }
+        .problem-card { background: var(--warm); border-left-color: #E59B2A; }
+        .takehome-card { background: #F5FAF6; border-left-color: var(--green); }
+        .module-card h3, .concept-card h3, .problem-card h3, .takehome-card h3 {
+          margin-top: 0; margin-bottom: 0.3em; color: var(--dark);
+        }
+        .big-flow { text-align:center; font-size:1.15em; font-weight:600; color:var(--dark); margin-top:1.2em; }
+        .mini-note { font-size:0.75em; color:#4B5E73; }
+        .smaller { font-size:0.78em; }
+        /* Projector safeguard: allow vertical scrolling on any overflowing slide. */
+        .reveal .slides section {
+          max-height: 900px;
+          overflow-y: auto !important;
+          overflow-x: hidden;
+          scrollbar-width: thin;
+        }
+        </style>
+
+execute:
+  echo: true
+  warning: false
+  message: false
+  freeze: auto
+
+editor: visual
+---
+
+# RNA-seq Data Analysis Workshop
+
+## From sequencing reads to biological interpretation
+
+::: big-flow
+**FASTQ → QC → Quantification → Count Matrix → DESeq2 → Visualization → GO / KEGG / GSEA**
+:::
+
+::: {.takehome-card .fragment}
+### Workshop goal
+
+Understand the complete logic of bulk RNA-seq analysis and move from raw sequencing data to interpretable biological results.
+:::
+
+------------------------------------------------------------------------
+
+## Workshop roadmap
+
+::::::::::: columns
+:::::: {.column width="50%"}
+::: {.module-card .fragment}
+### Module 1 — RNA-seq fundamentals
+
+RNA biology • Library strategies • Reads • Genes • Transcripts
+:::
+
+::: {.module-card .fragment}
+### Module 2 — Experimental design
+
+Replicates • Metadata • Confounding • Design formula
+:::
+
+::: {.module-card .fragment}
+### Module 3 — FASTQ → Counts
+
+QC • Alignment • Quantification • Count matrix
+:::
+::::::
+
+:::::: {.column width="50%"}
+::: {.module-card .fragment}
+### Module 4 — Differential expression
+
+DESeq2 • Normalization • Statistics • DEG
+:::
+
+::: {.module-card .fragment}
+### Module 5 — Visualization
+
+PCA • Heatmap • MA plot • Volcano plot
+:::
+
+::: {.module-card .fragment}
+### Module 6 — Functional biology
+
+Annotation • GO • KEGG • GSEA • Interpretation
+:::
+::::::
+:::::::::::
+
+------------------------------------------------------------------------
+
+## Learning objectives
+
+By the end of this workshop, participants should be able to:
+
+-   Explain the biological and computational logic of bulk RNA-seq.
+-   Recognize important experimental-design choices and common confounders.
+-   Understand FASTQ QC, alignment / pseudoalignment and quantification.
+-   Build and validate a gene-level count matrix.
+-   Run differential expression analysis using **DESeq2**.
+-   Interpret **log2 fold change**, **p-value** and **adjusted p-value**.
+-   Generate PCA, heatmap, MA and volcano plots.
+-   Perform **GO**, **KEGG** and **GSEA** analyses.
+
+## Mermaid rendering test
+
+```{mermaid}
+flowchart LR
+    A[FASTQ] --> B[QC]
+    B --> C[Alignment]
+    C --> D[Count matrix]
+```
+
+If you see boxes and arrows above, Mermaid is working correctly.
+
+---
+
+## End-to-end RNA-seq workflow
+
+<div class="workflow-area">
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="0"}
+
+### Phase 1 — Experimental setup
+
+```{mermaid}
+flowchart LR
+    A[Biological question] --> B[Experimental design]
+    B --> C[RNA extraction]
+    C --> D[Library preparation]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="1"}
+
+### Phase 2 — Sequencing & primary analysis
+
+```{mermaid}
+flowchart LR
+    A[Library preparation] --> B[Sequencing]
+    B --> C[FASTQ QC]
+    C --> D[Alignment / Quantification]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="2"}
+
+### Phase 3 — Statistical analysis
+
+```{mermaid}
+flowchart LR
+    A[Alignment / Quantification] --> B[Gene count matrix]
+    B --> C[DESeq2]
+    C --> D[Differential expression]
+```
+
+:::
+
+::: {.workflow-stage .fragment .current-visible data-fragment-index="3"}
+
+### Phase 4 — Biological interpretation
+
+```{mermaid}
+flowchart LR
+    A[Differential expression] --> B[Visualization]
+    B --> C[GO / KEGG / GSEA]
+    C --> D[Biological interpretation]
+```
+
+:::
+
+</div>
+
+---
+
+# Module 1 — RNA-seq Fundamentals
+
+## What does RNA-seq measure?
+
+::::::: columns
+:::: {.column width="52%"}
+::: {.concept-card .fragment}
+### Biological signal
+
+RNA-seq samples RNA molecules present in a biological specimen and converts them into sequenceable libraries.
+
+**RNA abundance → fragments → reads → mapped fragments → gene/transcript abundance**
+:::
+::::
+
+:::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Important limitation
+
+RNA-seq does **not** directly count intact RNA molecules.
+
+Observed counts can be influenced by library preparation, GC content, sequencing depth, RNA quality and mapping ambiguity.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## What can bulk RNA-seq tell us?
+
+:::::::::::: columns
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Expression
+
+Which genes are expressed?
+:::
+
+::: {.concept-card .fragment}
+### Sample relationships
+
+Do replicates cluster together?
+:::
+:::::
+
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Differential expression
+
+Which genes change between conditions?
+:::
+
+::: {.concept-card .fragment}
+### Quality control
+
+Are there outliers or batch effects?
+:::
+:::::
+
+::::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Pathways
+
+Which biological programs are enriched?
+:::
+
+::: {.concept-card .fragment}
+### Phenotype
+
+Which gene programs characterize the phenotype?
+:::
+:::::
+::::::::::::
+
+------------------------------------------------------------------------
+
+## Bulk RNA-seq vs single-cell RNA-seq
+
+| Feature             | Bulk RNA-seq       | scRNA-seq                        |
+|--------------------|--------------------|--------------------------------|
+| Unit measured       | Sample / tissue    | Individual cell / nucleus        |
+| Main output         | Average expression | Cell-level expression matrix     |
+| Depth per unit      | High               | Lower per cell                   |
+| Typical question    | Condition-level DE | Cell types, states, trajectories |
+| Complexity          | Moderate           | High                             |
+| Composition effects | Can confound DE    | Can be modeled explicitly        |
+
+------------------------------------------------------------------------
+
+## Common RNA-seq library strategies
+
+::::::::: columns
+::::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Poly(A) selection
+
+Enriches polyadenylated RNA and is commonly used for mRNA profiling.
+:::
+
+::: {.concept-card .fragment}
+### rRNA depletion
+
+Removes ribosomal RNA while retaining a broader range of RNA species.
+:::
+:::::
+
+::::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Stranded libraries
+
+Preserve transcript-strand information and improve assignment in overlapping loci.
+:::
+
+::: {.concept-card .fragment}
+### Paired-end sequencing
+
+Improves mapping across splice junctions and transcript structures.
+:::
+:::::
+:::::::::
+
+------------------------------------------------------------------------
+
+# Module 2 — Experimental Design
+
+## The most important analysis step happens before sequencing
+
+::: {.problem-card .fragment}
+### A sophisticated statistical model cannot rescue a fundamentally confounded experiment.
+:::
+
+-   What is the biological unit of replication?
+-   What is the primary comparison?
+-   Are replicates independent?
+-   Are important covariates recorded?
+-   Is batch balanced across conditions?
+-   Is the design paired, longitudinal or factorial?
+
+------------------------------------------------------------------------
+
+## Biological vs technical replicates
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Biological replicates
+
+Independent biological samples that capture biological variability and support inference beyond the samples measured.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Technical replicates
+
+Repeated measurement of the **same** biological material and mainly characterize technical variability.
+:::
+::::
+:::::::
+
+::: {.takehome-card .fragment}
+Three sequencing lanes from the same RNA extraction are **not** three biological replicates.
+:::
+
+------------------------------------------------------------------------
+
+## Confounding example
+
+| Sample | Condition | Batch  |
+|--------|-----------|--------|
+| S1     | Control   | Batch1 |
+| S2     | Control   | Batch1 |
+| S3     | Treated   | Batch2 |
+| S4     | Treated   | Batch2 |
+
+::: {.problem-card .fragment}
+### Problem
+
+Condition and batch are perfectly confounded. The model cannot determine whether the difference is caused by **condition** or **batch**.
+:::
+
+------------------------------------------------------------------------
+
+## Choosing a DESeq2 design formula
+
+``` r
+# Simple two-group design
+design = ~ condition
+
+# Adjust for batch
+design = ~ batch + condition
+
+# Paired design
+design = ~ patient + condition
+
+# Interaction design
+design = ~ genotype + treatment + genotype:treatment
+```
+
+------------------------------------------------------------------------
+
+# Module 3 — FASTQ to Count Matrix
+
+## FASTQ anatomy
+
+``` text
+@READ_ID
+ACGTTGCA...
++
+FFFFFFFF...
+```
+
+The quality line encodes per-base **Phred quality scores**.
+
+$$
+Q = -10\log_{10}(P_{error})
+$$
+
+::: {.takehome-card .fragment}
+**Q30** corresponds to an estimated base-call error probability of **0.001**.
+:::
+
+------------------------------------------------------------------------
+
+## Raw-read QC
+
+::::: columns
+::: {.column width="50%"}
+-   Per-base sequence quality
+-   Sequence quality distribution
+-   Adapter content
+-   Overrepresented sequences
+:::
+
+::: {.column width="50%"}
+-   GC distribution
+-   Sequence duplication
+-   Read-length distribution
+-   Ambiguous bases
+:::
+:::::
+
+::: {.takehome-card .fragment}
+A FastQC warning is a **diagnostic signal**, not automatically a reason to discard a sample.
+:::
+
+------------------------------------------------------------------------
+
+## Example QC commands
+
+``` bash
+mkdir -p fastqc_raw
+fastqc *.fastq.gz -o fastqc_raw -t 8
+multiqc fastqc_raw -o multiqc_raw
+```
+
+------------------------------------------------------------------------
+
+## Alignment-based workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[FASTQ] --> B[STAR / HISAT2]
+    B --> C[Aligned BAM]
+    C --> D[featureCounts / HTSeq]
+    D --> E[Gene count matrix]
+```
+
+------------------------------------------------------------------------
+
+## STAR: conceptual example
+
+``` bash
+STAR \
+  --genomeDir star_index \
+  --readFilesIn sample_R1.fastq.gz sample_R2.fastq.gz \
+  --readFilesCommand zcat \
+  --runThreadN 16 \
+  --outSAMtype BAM SortedByCoordinate \
+  --outFileNamePrefix sample.
+```
+
+------------------------------------------------------------------------
+
+## Gene counting with featureCounts
+
+``` bash
+featureCounts \
+  -T 8 \
+  -p \
+  -s 0 \
+  -a annotation.gtf \
+  -o gene_counts.txt \
+  *.bam
+```
+
+Important parameters: paired-end status, strandedness, annotation version and fragment/read counting behavior.
+
+------------------------------------------------------------------------
+
+## Transcript-quantification workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[FASTQ] --> B[Salmon / kallisto]
+    B --> C[Transcript abundance]
+    C --> D[tximport]
+    D --> E[Gene-level matrix]
+```
+
+------------------------------------------------------------------------
+
+## Alignment / quantification QC
+
+::::: columns
+::: {.column width="50%"}
+-   Total input reads / fragments
+-   Mapping rate
+-   Uniquely mapped fraction
+-   Multimapping fraction
+-   rRNA contamination
+:::
+
+::: {.column width="50%"}
+-   Exonic / intronic / intergenic distribution
+-   Strandedness
+-   Gene-body coverage
+-   Library complexity
+-   Number of detected genes
+:::
+:::::
+
+------------------------------------------------------------------------
+
+# Module 4 — Count Matrix and R Setup
+
+## Expected DESeq2 input
+
+| gene_id  | Control_1 | Control_2 | Treated_1 | Treated_2 |
+|----------|----------:|----------:|----------:|----------:|
+| ENSG...1 |       125 |       141 |       511 |       480 |
+| ENSG...2 |         2 |         0 |         1 |         3 |
+| ENSG...3 |       882 |       910 |       420 |       401 |
+
+::: {.takehome-card .fragment}
+For DESeq2, use **raw integer-like counts**, not TPM or FPKM, as input to the count model.
+:::
+
+------------------------------------------------------------------------
+
+## Load packages
+
+```{r}
+#| eval: false
+library(DESeq2)
+library(tidyverse)
+library(pheatmap)
+library(EnhancedVolcano)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+```
+
+------------------------------------------------------------------------
+
+## Import counts and metadata
+
+```{r}
+#| eval: false
+counts <- read.csv(
+  "gene_counts.csv",
+  row.names = 1,
+  check.names = FALSE
+)
+
+metadata <- read.csv(
+  "metadata.csv",
+  row.names = 1
+)
+```
+
+------------------------------------------------------------------------
+
+## Validate sample matching
+
+```{r}
+#| eval: false
+metadata <- metadata[colnames(counts), , drop = FALSE]
+stopifnot(identical(colnames(counts), rownames(metadata)))
+```
+
+------------------------------------------------------------------------
+
+## Filter very low-count genes
+
+```{r}
+#| eval: false
+keep <- rowSums(counts >= 10) >= 2
+counts_filtered <- counts[keep, ]
+```
+
+Filtering reduces uninformative tests and computation.
+
+------------------------------------------------------------------------
+
+# Module 5 — DESeq2 Fundamentals
+
+## Why not compare raw counts directly?
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Observed count] --> B[Biological expression]
+    A --> C[Sequencing depth]
+    A --> D[Sampling variation]
+    A --> E[Technical effects]
+```
+
+DESeq2 models counts using a **negative binomial** framework.
+
+------------------------------------------------------------------------
+
+## DESeq2 model
+
+$$
+K_{ij} \sim NB(\mu_{ij}, \alpha_i)
+$$
+
+-   $K_{ij}$ = observed count for gene $i$ in sample $j$
+-   $\mu_{ij}$ = expected count
+-   $\alpha_i$ = gene-specific dispersion
+
+------------------------------------------------------------------------
+
+## DESeq2 workflow
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Raw counts] --> B[DESeqDataSet]
+    B --> C[Size factors]
+    C --> D[Dispersion]
+    D --> E[Model fitting]
+    E --> F[Hypothesis testing]
+    F --> G[DE results]
+```
+
+------------------------------------------------------------------------
+
+## Create the DESeq2 object
+
+```{r}
+#| eval: false
+metadata$condition <- relevel(
+  factor(metadata$condition),
+  ref = "Control"
+)
+
+dds <- DESeqDataSetFromMatrix(
+  countData = round(counts_filtered),
+  colData = metadata,
+  design = ~ condition
+)
+```
+
+------------------------------------------------------------------------
+
+## Run the model and obtain a contrast
+
+```{r}
+#| eval: false
+dds <- DESeq(dds)
+
+res <- results(
+  dds,
+  contrast = c("condition", "Treated", "Control"),
+  alpha = 0.05
+)
+```
+
+------------------------------------------------------------------------
+
+## Interpreting log2 fold change
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Positive log2FC
+
+Higher expression in **Treated** relative to **Control**.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Negative log2FC
+
+Lower expression in **Treated** relative to **Control**.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## Multiple-testing correction
+
+A common workshop threshold:
+
+``` text
+padj < 0.05
+AND
+|log2FoldChange| >= 1
+```
+
+::: mini-note
+This is a reporting threshold, not a universal biological law.
+:::
+
+------------------------------------------------------------------------
+
+# Module 6 — Exploratory Analysis
+
+## Variance-stabilizing transformation
+
+```{r}
+#| eval: false
+vsd <- vst(dds, blind = FALSE)
+```
+
+Raw counts are used for the model; transformed counts are useful for **visualization** and **sample-level exploration**.
+
+------------------------------------------------------------------------
+
+## PCA
+
+```{r}
+#| eval: false
+plotPCA(vsd, intgroup = "condition")
+```
+
+Ask:
+
+-   Do biological replicates cluster together?
+-   Is condition a major source of variation?
+-   Is one sample an outlier?
+-   Could batch explain the separation?
+
+------------------------------------------------------------------------
+
+## Sample-distance heatmap
+
+```{r}
+#| eval: false
+sample_dist <- dist(t(assay(vsd)))
+
+pheatmap(
+  as.matrix(sample_dist),
+  annotation_col = as.data.frame(
+    colData(vsd)[, "condition", drop = FALSE]
+  )
+)
+```
+
+------------------------------------------------------------------------
+
+# Module 7 — Differential Expression Results
+
+## MA plot
+
+```{r}
+#| eval: false
+plotMA(res, alpha = 0.05, ylim = c(-5, 5))
+```
+
+::: {.takehome-card .fragment}
+The MA plot compares **effect size** against **mean abundance**.
+:::
+
+------------------------------------------------------------------------
+
+## Create a DE results table
+
+```{r}
+#| eval: false
+res_df <- as.data.frame(res) |>
+  rownames_to_column("gene_id") |>
+  mutate(
+    status = case_when(
+      !is.na(padj) & padj < 0.05 & log2FoldChange >= 1 ~ "Up",
+      !is.na(padj) & padj < 0.05 & log2FoldChange <= -1 ~ "Down",
+      TRUE ~ "Not significant"
+    )
+  )
+```
+
+------------------------------------------------------------------------
+
+## Volcano plot
+
+```{r}
+#| eval: false
+EnhancedVolcano(
+  res_df,
+  lab = res_df$gene_id,
+  x = "log2FoldChange",
+  y = "padj",
+  pCutoff = 0.05,
+  FCcutoff = 1,
+  title = "Treated vs Control"
+)
+```
+
+------------------------------------------------------------------------
+
+## Heatmap of top DE genes
+
+```{r}
+#| eval: false
+top_de <- res_df |>
+  filter(status != "Not significant") |>
+  arrange(padj) |>
+  slice_head(n = 30)
+
+mat <- assay(vsd)[top_de$gene_id, , drop = FALSE]
+mat_z <- t(scale(t(mat)))
+
+pheatmap(mat_z)
+```
+
+------------------------------------------------------------------------
+
+# Module 8 — Gene Annotation
+
+## Why identifier conversion matters
+
+::::::::: columns
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Ensembl
+
+`ENSG...`
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Entrez
+
+Numeric gene identifier
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### Symbol
+
+Example: `TP53`
+:::
+::::
+:::::::::
+
+::: {.takehome-card .fragment}
+Never assume every identifier maps one-to-one.
+:::
+
+------------------------------------------------------------------------
+
+## Map Ensembl IDs
+
+```{r}
+#| eval: false
+res_df <- res_df |>
+  mutate(ensembl_id = sub("\\..*$", "", gene_id))
+
+id_map <- AnnotationDbi::select(
+  org.Hs.eg.db,
+  keys = unique(res_df$ensembl_id),
+  keytype = "ENSEMBL",
+  columns = c("SYMBOL", "ENTREZID")
+)
+```
+
+------------------------------------------------------------------------
+
+# Module 9 — Functional Enrichment Concepts
+
+## From genes to biology
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Differential expression] --> B[Gene list / ranked list]
+    B --> C[Functional gene sets]
+    C --> D[GO / KEGG / GSEA]
+    D --> E[Biological themes]
+```
+
+------------------------------------------------------------------------
+
+## ORA vs GSEA
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.module-card .fragment}
+### ORA
+
+**Input:** selected significant gene list
+
+**Question:** Are some gene sets represented more than expected?
+
+**Examples:** GO and KEGG enrichment
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.module-card .fragment}
+### GSEA
+
+**Input:** ranked list of many / all tested genes
+
+**Question:** Do pathway genes accumulate toward one end of the ranking?
+
+**Advantage:** detects coordinated modest shifts
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## Gene Ontology
+
+::::::::: columns
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### BP — Biological Process
+
+What biological program is occurring?
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### MF — Molecular Function
+
+What molecular activity is performed?
+:::
+::::
+
+:::: {.column width="33%"}
+::: {.concept-card .fragment}
+### CC — Cellular Component
+
+Where is the gene product acting?
+:::
+::::
+:::::::::
+
+------------------------------------------------------------------------
+
+## ORA background matters
+
+::: {.takehome-card .fragment}
+The ORA **background / universe** should represent genes that had a reasonable opportunity to be selected — not automatically every annotated gene in the genome.
+:::
+
+------------------------------------------------------------------------
+
+# Module 10 — GO Enrichment
+
+## Prepare significant genes
+
+```{r}
+#| eval: false
+sig_entrez <- res_annotated |>
+  filter(
+    !is.na(ENTREZID),
+    !is.na(padj),
+    padj < 0.05,
+    abs(log2FoldChange) >= 1
+  ) |>
+  pull(ENTREZID) |>
+  unique()
+
+background_entrez <- res_annotated |>
+  filter(!is.na(ENTREZID)) |>
+  pull(ENTREZID) |>
+  unique()
+```
+
+------------------------------------------------------------------------
+
+## Run GO Biological Process enrichment
+
+```{r}
+#| eval: false
+ego_bp <- enrichGO(
+  gene = sig_entrez,
+  universe = background_entrez,
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  pAdjustMethod = "BH",
+  readable = TRUE
+)
+```
+
+------------------------------------------------------------------------
+
+## GO visualization
+
+```{r}
+#| eval: false
+dotplot(ego_bp, showCategory = 20) +
+  ggtitle("GO Biological Process enrichment")
+```
+
+------------------------------------------------------------------------
+
+# Module 11 — Up- and Down-regulated Biology
+
+## Why split directions?
+
+Combining up- and down-regulated genes can mix opposing biological programs.
+
+```{r}
+#| eval: false
+up_entrez <- res_annotated |>
+  filter(!is.na(ENTREZID), padj < 0.05, log2FoldChange >= 1) |>
+  pull(ENTREZID) |>
+  unique()
+
+down_entrez <- res_annotated |>
+  filter(!is.na(ENTREZID), padj < 0.05, log2FoldChange <= -1) |>
+  pull(ENTREZID) |>
+  unique()
+```
+
+------------------------------------------------------------------------
+
+# Module 12 — KEGG Pathway Enrichment
+
+## KEGG ORA
+
+```{r}
+#| eval: false
+ekk <- enrichKEGG(
+  gene = sig_entrez,
+  universe = background_entrez,
+  organism = "hsa",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH"
+)
+
+dotplot(ekk, showCategory = 20)
+```
+
+------------------------------------------------------------------------
+
+# Module 13 — GSEA
+
+## Why GSEA?
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### ORA
+
+Requires a threshold that divides genes into selected and not selected.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### GSEA
+
+Uses a ranked list and asks whether genes from a pathway accumulate toward the top or bottom.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+## Create a ranked gene list
+
+```{r}
+#| eval: false
+rank_df <- res_annotated |>
+  filter(!is.na(ENTREZID), !is.na(stat)) |>
+  distinct(ENTREZID, .keep_all = TRUE)
+
+gene_list <- rank_df$stat
+names(gene_list) <- rank_df$ENTREZID
+gene_list <- sort(gene_list, decreasing = TRUE)
+```
+
+------------------------------------------------------------------------
+
+## GO GSEA
+
+```{r}
+#| eval: false
+gsea_go <- gseGO(
+  geneList = gene_list,
+  OrgDb = org.Hs.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  pAdjustMethod = "BH",
+  verbose = FALSE
+)
+```
+
+------------------------------------------------------------------------
+
+## Understanding NES
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Positive NES
+
+Gene set enriched toward the **positive / top** end of the ranking.
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.concept-card .fragment}
+### Negative NES
+
+Gene set enriched toward the **negative / bottom** end of the ranking.
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+# Module 14 — Interpretation Framework
+
+## A defensible interpretation sequence
+
+```{mermaid}
+%%| echo: false
+flowchart LR
+    A[Technical QC] --> B[Sample relationships]
+    B --> C[Correct contrast]
+    C --> D[Effect size + uncertainty]
+    D --> E[Individual genes]
+    E --> F[Pathway-level signals]
+    F --> G[Biological context]
+    G --> H[Validation]
+```
+
+------------------------------------------------------------------------
+
+## Avoid common interpretation errors
+
+::::: columns
+::: {.column width="50%"}
+-   Using `p < 0.05` without multiple-testing correction.
+-   Treating tiny significant fold changes as automatically important.
+-   Using TPM / FPKM directly as DESeq2 input.
+-   Ignoring PCA outliers.
+:::
+
+::: {.column width="50%"}
+-   Ignoring batch or paired structure.
+-   Treating every GO term as an independent discovery.
+-   Using an inappropriate ORA background.
+-   Ignoring failed or duplicated ID mappings.
+:::
+:::::
+
+------------------------------------------------------------------------
+
+# Module 15 — Troubleshooting
+
+## Low mapping rate
+
+::: {.problem-card .fragment}
+### Possible causes
+
+Wrong reference • contamination • poor read quality • adapters • short inserts • rRNA abundance • species mismatch • library issue
+:::
+
+------------------------------------------------------------------------
+
+## PCA outlier
+
+::: {.problem-card .fragment}
+### Check
+
+Sample identity • library size • mapping rate • RNA quality • batch • contamination • biological heterogeneity • metadata accuracy
+:::
+
+::: {.takehome-card .fragment}
+Do not remove an outlier simply because it makes the desired comparison look cleaner.
+:::
+
+------------------------------------------------------------------------
+
+## Too many or no DE genes
+
+::::::: columns
+:::: {.column width="50%"}
+::: {.problem-card .fragment}
+### Too many DE genes
+
+Strong biology • batch confounding • composition shift • wrong contrast • underestimated variability
+:::
+::::
+
+:::: {.column width="50%"}
+::: {.problem-card .fragment}
+### No significant DE genes
+
+Weak effect • low power • high variability • wrong contrast • technical noise • poor design
+:::
+::::
+:::::::
+
+------------------------------------------------------------------------
+
+# Module 16 — Reproducibility
+
+## Record the computational environment
+
+```{r}
+#| eval: false
+sessionInfo()
+```
+
+Also retain reference/annotation versions, software versions, commands, parameters, metadata, QC reports, scripts and final result tables.
+
+------------------------------------------------------------------------
+
+# Module 17 — Hands-on Exercise
+
+## Differential expression exercise
+
+1.  Verify sample names and order.
+2.  Filter low-count genes.
+3.  Build a DESeq2 dataset.
+4.  Run `DESeq()`.
+5.  Extract `Treated vs Control`.
+6.  Count significant genes.
+7.  Generate PCA, MA and volcano plots.
+8.  Plot a heatmap of the top DE genes.
+
+------------------------------------------------------------------------
+
+## Functional interpretation exercise
+
+1.  Convert identifiers to Entrez IDs.
+2.  Define the tested-gene background.
+3.  Run GO BP enrichment.
+4.  Run KEGG enrichment.
+5.  Build a ranked list using the DE statistic.
+6.  Run GO GSEA.
+7.  Compare ORA and GSEA conclusions.
+8.  Identify 3–5 coherent biological themes.
+
+------------------------------------------------------------------------
+
+# Final Take-home Messages
+
+## Five principles to remember
+
+::: {.takehome-card .fragment}
+### 1. Experimental design determines what can be inferred.
+:::
+
+::: {.takehome-card .fragment}
+### 2. QC is continuous — from FASTQ through biological interpretation.
+:::
+
+::: {.takehome-card .fragment}
+### 3. Use raw counts for count-based differential-expression models.
+:::
+
+::: {.takehome-card .fragment}
+### 4. Effect size, uncertainty and sample-level patterns must be interpreted together.
+:::
+
+::: {.takehome-card .fragment}
+### 5. Enrichment summarizes gene-level results; it does not prove pathway activation.
+:::
+
+------------------------------------------------------------------------
+
+# Appendix
+
+## Minimal DESeq2 workflow
+
+```{r}
+#| eval: false
+library(DESeq2)
+library(tidyverse)
+
+counts <- read.csv("gene_counts.csv", row.names = 1, check.names = FALSE)
+meta <- read.csv("metadata.csv", row.names = 1)
+meta <- meta[colnames(counts), , drop = FALSE]
+stopifnot(identical(colnames(counts), rownames(meta)))
+
+keep <- rowSums(counts >= 10) >= 2
+counts <- counts[keep, ]
+meta$condition <- relevel(factor(meta$condition), ref = "Control")
+
+dds <- DESeqDataSetFromMatrix(
+  countData = round(counts),
+  colData = meta,
+  design = ~ condition
+)
+
+dds <- DESeq(dds)
+res <- results(dds, contrast = c("condition", "Treated", "Control"))
+```
+
+------------------------------------------------------------------------
+
+## Instructor note
+
+For a live workshop, provide participants with:
+
+-   a **small FASTQ subset** for demonstrating QC / alignment; and
+-   a **prepared gene-count matrix** for the full R / DESeq2 / enrichment session.
+
+::: {.takehome-card .fragment}
+This keeps compute time from dominating the workshop while preserving the complete end-to-end analysis logic.
+:::

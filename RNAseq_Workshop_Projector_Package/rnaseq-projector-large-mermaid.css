@@ -1,0 +1,355 @@
+/* RNA-seq workshop — projector / large-screen presentation styling */
+
+:root {
+  --r-main-font-size: 34px;
+  --r-heading-font: Arial, Helvetica, sans-serif;
+  --r-main-font: Arial, Helvetica, sans-serif;
+  --r-code-font: "DejaVu Sans Mono", "Courier New", monospace;
+  --r-heading-color: #102a43;
+  --r-main-color: #172b4d;
+  --r-link-color: #0057b8;
+  --r-selection-background-color: #dbeafe;
+}
+
+.reveal {
+  font-size: 34px;
+  line-height: 1.26;
+}
+
+.reveal .slides {
+  text-align: left;
+}
+
+.reveal .slides section {
+  padding: 10px 24px;
+  box-sizing: border-box;
+}
+
+.reveal h1,
+.reveal h2,
+.reveal h3 {
+  text-transform: none;
+  letter-spacing: -0.015em;
+  font-weight: 700;
+  margin-top: 0;
+}
+
+.reveal h1 {
+  font-size: 1.75em;
+  line-height: 1.05;
+}
+
+.reveal h2 {
+  font-size: 1.40em;
+  line-height: 1.08;
+  margin-bottom: 0.42em;
+  border-bottom: 3px solid #d7e3f1;
+  padding-bottom: 0.12em;
+}
+
+.reveal h3 {
+  font-size: 1.08em;
+  margin-bottom: 0.3em;
+}
+
+.reveal p,
+.reveal li {
+  font-size: 0.92em;
+}
+
+.reveal li {
+  margin-bottom: 0.22em;
+}
+
+.reveal ul,
+.reveal ol {
+  margin-top: 0.25em;
+}
+
+/* Keep dense tables readable at distance without overrunning the slide. */
+.reveal table {
+  font-size: 0.62em;
+  line-height: 1.15;
+  width: 100%;
+  margin-top: 0.35em;
+}
+
+.reveal table th {
+  font-weight: 700;
+  background: #eef4fa;
+}
+
+.reveal table th,
+.reveal table td {
+  padding: 0.32em 0.45em;
+  vertical-align: top;
+}
+
+/* Code is intentionally larger than typical web slides for projector use. */
+.reveal pre {
+  width: 100%;
+  margin: 0.45em 0;
+  box-shadow: none;
+}
+
+.reveal pre code {
+  font-size: 0.62em;
+  line-height: 1.20;
+  max-height: 620px;
+  padding: 0.75em;
+  border-radius: 8px;
+}
+
+.reveal code:not(pre code) {
+  font-size: 0.88em;
+}
+
+/* Make callouts compact but visible from the back of the room. */
+.reveal .callout {
+  font-size: 0.73em;
+  margin: 0.45em 0;
+  border-radius: 8px;
+}
+
+.reveal .callout-title-container {
+  font-weight: 700;
+}
+
+/* Figures and diagrams should dominate the visual field. */
+.reveal img,
+.reveal svg {
+  max-height: 620px;
+  object-fit: contain;
+}
+
+.reveal .cell-output-display img,
+.reveal .cell-output-display svg {
+  max-height: 590px;
+}
+
+/* ------------------------------------------------------------------
+   Mermaid — projector optimized
+   ------------------------------------------------------------------ */
+
+/* Let Mermaid use the full available slide width. */
+.reveal .mermaid {
+  width: 100%;
+  text-align: center;
+  font-size: 1em;
+  margin: 0.25em auto 0 auto;
+}
+
+/* Scale the full diagram for a 1600x900 projector. */
+.reveal .mermaid svg {
+  width: 100% !important;
+  max-width: 1450px !important;
+  max-height: 560px !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  overflow: visible !important;
+}
+
+/* Make node labels large enough to read from the back of the room. */
+.reveal .mermaid .nodeLabel,
+.reveal .mermaid .label,
+.reveal .mermaid .label text,
+.reveal .mermaid foreignObject,
+.reveal .mermaid foreignObject div,
+.reveal .mermaid foreignObject span,
+.reveal .mermaid foreignObject p {
+  font-size: 32px !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+}
+
+/* Increase apparent box size through internal label padding. */
+.reveal .mermaid foreignObject div {
+  padding: 14px 22px !important;
+}
+
+/* Stronger box outlines for projection. */
+.reveal .mermaid .node rect,
+.reveal .mermaid .node polygon,
+.reveal .mermaid .node circle,
+.reveal .mermaid .node ellipse {
+  stroke-width: 2.2px !important;
+}
+
+/* Make arrows/links easier to see on a projector. */
+.reveal .mermaid .flowchart-link,
+.reveal .mermaid .edgePath path {
+  stroke-width: 2.4px !important;
+}
+
+/* Larger arrowheads. */
+.reveal .mermaid marker path {
+  stroke-width: 1.8px !important;
+}
+
+/* Keep edge labels readable. */
+.reveal .mermaid .edgeLabel,
+.reveal .mermaid .edgeLabel p,
+.reveal .mermaid .edgeLabel span {
+  font-size: 22px !important;
+  font-weight: 600 !important;
+}
+
+/* Workflow stages replace each other in the same visual area. */
+.workflow-area {
+  position: relative;
+  width: 100%;
+  min-height: 560px;
+  margin-top: 14px;
+}
+
+.workflow-stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+.workflow-stage h3 {
+  text-align: center;
+  font-size: 1.18em;
+  color: #165DAD;
+  margin-bottom: 18px;
+}
+
+/* Title slide */
+.reveal .title-slide h1,
+.reveal #title-slide h1 {
+  font-size: 2.15em;
+  line-height: 1.02;
+  margin-bottom: 0.28em;
+}
+
+.reveal .title-slide .subtitle,
+.reveal #title-slide .subtitle {
+  font-size: 1.10em;
+  line-height: 1.25;
+  max-width: 1150px;
+}
+
+.reveal .title-slide .author,
+.reveal .title-slide .date,
+.reveal #title-slide .author,
+.reveal #title-slide .date {
+  font-size: 0.78em;
+}
+
+/* Section-divider slides generated from level-1 headings. */
+.reveal section.level1 > h1 {
+  font-size: 2.0em;
+  margin-top: 1.8em;
+  max-width: 1250px;
+}
+
+/* Slide numbers must be visible but unobtrusive. */
+.reveal .slide-number {
+  font-size: 18px !important;
+  background: rgba(255,255,255,0.88);
+  color: #334e68;
+}
+
+/* Avoid tiny captions on projected figures. */
+.reveal .figure-caption,
+.reveal figcaption {
+  font-size: 0.58em;
+  line-height: 1.15;
+}
+
+/* Slightly tighter math so equations remain readable and centered. */
+.reveal .MathJax,
+.reveal mjx-container {
+  font-size: 1.04em !important;
+}
+
+/* Utility classes usable in the qmd when a slide needs special sizing. */
+.reveal .small-text { font-size: 0.72em; }
+.reveal .tiny-text { font-size: 0.60em; }
+.reveal .big-text { font-size: 1.18em; }
+.reveal .center-text { text-align: center; }
+
+
+
+/* =========================================================
+   Small corner animation on every slide
+   ========================================================= */
+
+/* Needed so the corner element is positioned inside each slide */
+.reveal .slides section {
+  position: relative;
+}
+
+/* Appears only when a slide becomes the active/present slide */
+.reveal .slides section.present::after {
+  content: "A  C  G  T";
+
+  position: absolute;
+  top: 18px;
+  right: 28px;
+
+  font-family: "DejaVu Sans Mono", "Courier New", monospace;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+
+  color: #5f748a;
+
+  pointer-events: none;
+  z-index: 20;
+
+  opacity: 0;
+
+  animation:
+    rnaseqCornerEnter 0.7s ease-out forwards,
+    rnaseqCornerPulse 3s ease-in-out 0.7s infinite;
+}
+
+
+/* Animation when a new slide appears */
+@keyframes rnaseqCornerEnter {
+
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.88);
+  }
+
+  65% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.05);
+  }
+
+  100% {
+    opacity: 0.8;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* Very subtle movement while the slide is active */
+@keyframes rnaseqCornerPulse {
+
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+
+/* Respect reduced-motion accessibility preferences */
+@media (prefers-reduced-motion: reduce) {
+
+  .reveal .slides section.present::after {
+    animation: none;
+    opacity: 0.7;
+  }
+
+}

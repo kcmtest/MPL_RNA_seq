@@ -1,0 +1,1051 @@
+---
+title: "Shell & R Foundations for RNA-seq"
+subtitle: "Practical skills before differential expression analysis"
+author: "Krushna Chandra Murmu"
+institute: "Bioinformatics Specialist, Premas Life Sciences"
+date: today
+
+format:
+  revealjs:
+    theme: simple
+    width: 1600
+    height: 900
+    margin: 0.045
+    center: false
+    progress: true
+    controls: true
+    navigation-mode: linear
+    transition: fade
+    background-transition: fade
+    incremental: true
+    toc: false
+    scrollable: true
+    auto-stretch: true
+    css: rnaseq-projector-large-mermaid.css
+    include-in-header:
+      text: |
+        <style>
+        :root {
+          --blue: #165DAD;
+          --dark: #10243E;
+          --soft: #F3F7FB;
+          --border: #D8E4F0;
+          --green: #3A9D5D;
+          --warm: #FFF7E8;
+        }
+
+        .reveal { font-size: 34px; }
+        .reveal h1 { color: var(--dark); }
+        .reveal h2 {
+          color: var(--dark);
+          border-bottom: 3px solid #d7e3f1;
+          padding-bottom: 0.12em;
+        }
+
+        .module-card, .concept-card, .takehome-card, .problem-card {
+          border: 1px solid var(--border);
+          border-left: 9px solid var(--blue);
+          border-radius: 14px;
+          background: var(--soft);
+          padding: 16px 20px;
+          margin: 10px 0 16px 0;
+          box-shadow: 0 4px 14px rgba(16,36,62,0.07);
+        }
+
+        .takehome-card {
+          border-left-color: var(--green);
+          background: #F5FAF6;
+        }
+
+        .problem-card {
+          border-left-color: #E59B2A;
+          background: var(--warm);
+        }
+
+        .reveal pre code {
+          font-size: 0.64em;
+          line-height: 1.22;
+          max-height: 600px;
+        }
+
+        .reveal table {
+          font-size: 0.70em;
+        }
+
+        .session-label {
+          font-size: 0.58em;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          color: #165DAD;
+          text-transform: uppercase;
+          margin-bottom: 0.25em;
+        }
+
+        .practice-box {
+          border: 2px dashed #9CB7D4;
+          border-radius: 14px;
+          padding: 16px 20px;
+          background: #F8FBFE;
+          margin-top: 12px;
+        }
+
+        .reveal .slides section {
+          max-height: 900px;
+          overflow-y: auto !important;
+          overflow-x: hidden;
+          scrollbar-width: thin;
+        }
+        </style>
+
+execute:
+  echo: false
+  warning: false
+  message: false
+  freeze: auto
+
+editor: source
+---
+
+# Shell & R Foundations for RNA-seq
+
+## Where this session fits
+
+```{mermaid}
+flowchart LR
+    A[RNA-seq concepts] --> B[Shell foundations]
+    B --> C[R foundations]
+    C --> D[Count matrix + metadata ready]
+    D --> E[Differential expression]
+```
+
+::: {.takehome-card .fragment}
+### Goal
+Before DESeq2 or edgeR, participants should be comfortable with **files, commands, tables, R objects and metadata**.
+:::
+
+---
+
+## Session roadmap
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.module-card .fragment}
+### Session 1 — Shell
+
+- navigate files and folders
+- inspect FASTQ and text files
+- pipes and redirection
+- `grep`, `wc`, wildcards
+- variables and loops
+- simple RNA-seq shell workflow
+:::
+:::
+
+::: {.column width="48%"}
+::: {.module-card .fragment}
+### Session 2 — R
+
+- objects, vectors and data frames
+- reading counts and metadata
+- factors
+- tidyverse basics
+- ggplot2 basics
+- validating count matrix + metadata
+:::
+:::
+
+::::
+
+---
+
+# Session 1 — Shell Fundamentals
+
+## Why use the command line in bioinformatics?
+
+The shell is useful because sequencing analysis is often:
+
+- file-oriented;
+- repetitive;
+- performed on Linux servers;
+- dependent on command-line tools;
+- easier to automate than manual clicking.
+
+::: {.takehome-card .fragment}
+The shell is the practical bridge between **raw sequencing files** and the **count matrix** that will later enter R.
+:::
+
+---
+
+## Terminal vs shell
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Terminal
+The window or application where commands are entered.
+
+Examples:
+
+- Windows Terminal
+- Git Bash
+- VS Code terminal
+- Linux terminal
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Shell
+The program that interprets those commands.
+
+Examples:
+
+- Bash
+- Zsh
+- PowerShell
+:::
+:::
+
+::::
+
+---
+
+## Know where you are
+
+```bash
+pwd
+ls -lh
+```
+
+Move between directories:
+
+```bash
+cd RNAseq
+cd ..
+cd ~
+cd -
+```
+
+::: {.practice-box .fragment}
+### Practice
+Navigate into the workshop folder and confirm the current directory with `pwd`.
+:::
+
+---
+
+## Absolute vs relative paths
+
+:::: {.columns}
+
+::: {.column width="50%"}
+### Absolute path
+
+```text
+/home/user/RNAseq/fastq/sample_R1.fastq.gz
+```
+
+Starts from the filesystem root.
+:::
+
+::: {.column width="50%"}
+### Relative path
+
+```text
+fastq/sample_R1.fastq.gz
+```
+
+Starts from the current working directory.
+:::
+
+::::
+
+::: {.takehome-card .fragment}
+Relative paths make projects easier to move between systems.
+:::
+
+---
+
+## Organize an RNA-seq project
+
+```text
+RNAseq/
+├── fastq/
+├── qc/
+├── alignment/
+├── counts/
+├── scripts/
+└── results/
+```
+
+Create directories:
+
+```bash
+mkdir -p qc alignment counts scripts results
+```
+
+::: {.fragment}
+Good organization reduces accidental overwriting and makes troubleshooting easier.
+:::
+
+---
+
+## Inspect files without opening huge datasets
+
+Small text files:
+
+```bash
+head metadata.csv
+tail metadata.csv
+```
+
+Compressed FASTQ:
+
+```bash
+zcat sample_R1.fastq.gz | head
+```
+
+Count lines:
+
+```bash
+wc -l metadata.csv
+```
+
+---
+
+## Pipes: connect commands together
+
+```bash
+zcat sample_R1.fastq.gz | head
+```
+
+```{mermaid}
+flowchart LR
+    A[zcat] --> B[standard output]
+    B --> C[head]
+    C --> D[first lines only]
+```
+
+::: {.takehome-card .fragment}
+The pipe `|` sends the output of one command directly into another command.
+:::
+
+---
+
+## Redirect output and logs
+
+Save output:
+
+```bash
+command > output.txt
+```
+
+Append:
+
+```bash
+command >> output.txt
+```
+
+Save errors:
+
+```bash
+command 2> error.log
+```
+
+Save both output and errors:
+
+```bash
+command > run.log 2>&1
+```
+
+::: {.fragment}
+Logs are essential for reproducibility and troubleshooting.
+:::
+
+---
+
+## Search text with grep
+
+```bash
+grep "PASS" results.txt
+```
+
+Case-insensitive:
+
+```bash
+grep -i "error" pipeline.log
+```
+
+Multiple patterns:
+
+```bash
+grep -E "error|warning|failed" pipeline.log
+```
+
+Useful in bioinformatics logs, VCFs and QC summaries.
+
+---
+
+## Wildcards
+
+```bash
+ls *.fastq.gz
+```
+
+can match:
+
+```text
+Control1_R1.fastq.gz
+Control1_R2.fastq.gz
+Treated1_R1.fastq.gz
+Treated1_R2.fastq.gz
+```
+
+::: {.problem-card .fragment}
+Wildcards are powerful. Always check which files match before using them with destructive commands.
+:::
+
+---
+
+## Shell variables
+
+```bash
+sample="Control01"
+
+R1="${sample}_R1.fastq.gz"
+R2="${sample}_R2.fastq.gz"
+
+echo "$R1"
+```
+
+Why variables?
+
+- reduce repeated typing;
+- make scripts reusable;
+- reduce filename mistakes.
+
+---
+
+## Loops: repeat the same task
+
+```bash
+for file in *.fastq.gz
+do
+  echo "$file"
+done
+```
+
+RNA-seq example:
+
+```bash
+for file in *.fastq.gz
+do
+  fastqc "$file" -o qc/
+done
+```
+
+---
+
+## A minimal shell script
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p qc
+
+fastqc *.fastq.gz -o qc/
+multiqc qc/ -o qc/
+```
+
+Run:
+
+```bash
+chmod +x run_qc.sh
+./run_qc.sh
+```
+
+---
+
+## Where Shell fits in RNA-seq
+
+```{mermaid}
+flowchart LR
+    A[FASTQ] --> B[FastQC / MultiQC]
+    B --> C[STAR / HISAT2]
+    C --> D[BAM]
+    D --> E[featureCounts]
+    E --> F[Gene count matrix]
+```
+
+::: {.takehome-card .fragment}
+The main output we want to hand over to R is a **clean gene count matrix plus sample metadata**.
+:::
+
+---
+
+## Shell hands-on checkpoint
+
+::: {.practice-box}
+### Exercise
+
+1. Run `pwd` and `ls -lh`.
+2. Inspect the first FASTQ record.
+3. Search a log for `error`, `warning` or `failed`.
+4. Create a `qc/` folder.
+5. Write a short loop that prints all `.fastq.gz` filenames.
+:::
+
+---
+
+# Session 2 — R Fundamentals
+
+## Why R after the Shell session?
+
+The shell handles:
+
+**files + command-line tools**
+
+R handles:
+
+**tables + statistics + visualization**
+
+```{mermaid}
+flowchart LR
+    A[Gene count matrix] --> B[R]
+    C[Sample metadata] --> B
+    B --> D[Data checking]
+    D --> E[Differential expression]
+```
+
+---
+
+## R vs RStudio
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### R
+The programming language and statistical engine.
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### RStudio
+An environment for writing scripts, viewing objects, plots, files and help.
+:::
+:::
+
+::::
+
+---
+
+## Objects and assignment
+
+```r
+x <- 10
+
+sample_name <- "Control01"
+
+passed_qc <- TRUE
+```
+
+Common basic data types:
+
+```text
+numeric
+character
+logical
+NA
+```
+
+---
+
+## Vectors
+
+```r
+counts <- c(10, 25, 40, 18)
+
+samples <- c(
+  "Control1",
+  "Control2",
+  "Treated1",
+  "Treated2"
+)
+```
+
+Useful operations:
+
+```r
+length(counts)
+mean(counts)
+max(counts)
+```
+
+---
+
+## Indexing and filtering
+
+First element:
+
+```r
+samples[1]
+```
+
+Several elements:
+
+```r
+samples[c(1, 3)]
+```
+
+Logical filtering:
+
+```r
+counts[counts > 20]
+```
+
+::: {.takehome-card .fragment}
+Filtering by a logical condition is one of the most common patterns in downstream analysis.
+:::
+
+---
+
+## Data frames
+
+```r
+metadata <- data.frame(
+  sample = c("C1", "C2", "T1", "T2"),
+  condition = c(
+    "Control",
+    "Control",
+    "Treated",
+    "Treated"
+  )
+)
+```
+
+Inspect:
+
+```r
+head(metadata)
+str(metadata)
+dim(metadata)
+```
+
+---
+
+## Count matrix concept in R
+
+```text
+          C1   C2   T1   T2
+GeneA    120  130  450  470
+GeneB     15   19   22   20
+GeneC    850  900  390  410
+```
+
+Rows:
+
+**genes**
+
+Columns:
+
+**samples**
+
+::: {.takehome-card .fragment}
+The column names of the count matrix must correspond to the sample identifiers in the metadata.
+:::
+
+---
+
+## Read files into R
+
+Metadata:
+
+```r
+metadata <- read.csv(
+  "metadata.csv",
+  row.names = 1
+)
+```
+
+Counts:
+
+```r
+counts <- read.csv(
+  "gene_counts.csv",
+  row.names = 1,
+  check.names = FALSE
+)
+```
+
+---
+
+# R Packages and Libraries
+
+## Installing vs loading packages
+
+Install once:
+
+```r
+install.packages("ggplot2")
+```
+
+Load each session:
+
+```r
+library(ggplot2)
+```
+
+::: {.takehome-card .fragment}
+**Install** puts the package on the system.
+
+**library()** loads it into the current R session.
+:::
+
+---
+
+## CRAN vs Bioconductor
+
+:::: {.columns}
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### CRAN
+
+General-purpose R ecosystem.
+
+Examples:
+
+- `ggplot2`
+- `dplyr`
+- `readr`
+- `tidyr`
+- `ggrepel`
+:::
+:::
+
+::: {.column width="48%"}
+::: {.concept-card .fragment}
+### Bioconductor
+
+Specialized bioinformatics ecosystem.
+
+Examples:
+
+- `DESeq2`
+- `edgeR`
+- `AnnotationDbi`
+- `clusterProfiler`
+- `org.Hs.eg.db`
+:::
+:::
+
+::::
+
+---
+
+## Packages we will use later
+
+```r
+library(tidyverse)
+library(DESeq2)
+library(edgeR)
+library(pheatmap)
+library(EnhancedVolcano)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(AnnotationDbi)
+library(enrichplot)
+```
+
+At this stage, participants only need to understand **what the packages are for**.
+
+---
+
+## tidyverse: the core data-manipulation verbs
+
+| Function | Purpose |
+|---|---|
+| `filter()` | keep rows |
+| `select()` | keep columns |
+| `mutate()` | create/modify columns |
+| `arrange()` | sort rows |
+| `group_by()` | define groups |
+| `summarise()` | summarize groups |
+| `left_join()` | combine tables |
+
+---
+
+## Pipe operator
+
+```r
+results |>
+  filter(padj < 0.05) |>
+  arrange(padj)
+```
+
+Read it as:
+
+```text
+take results
+      ↓
+filter rows
+      ↓
+sort by padj
+```
+
+---
+
+## Factors matter for experimental groups
+
+```r
+metadata$condition <- factor(
+  metadata$condition
+)
+```
+
+Set reference level:
+
+```r
+metadata$condition <- relevel(
+  metadata$condition,
+  ref = "Control"
+)
+```
+
+::: {.takehome-card .fragment}
+Factors tell R which values represent experimental categories and which level should be treated as the reference.
+:::
+
+---
+
+## The most important pre-DE check
+
+Count matrix:
+
+```r
+colnames(counts)
+```
+
+Metadata:
+
+```r
+rownames(metadata)
+```
+
+Check:
+
+```r
+identical(
+  colnames(counts),
+  rownames(metadata)
+)
+```
+
+Expected:
+
+```text
+TRUE
+```
+
+::: {.problem-card .fragment}
+If these are mismatched, the wrong biological labels can be assigned to the wrong expression profiles.
+:::
+
+---
+
+## Reorder metadata safely
+
+```r
+metadata <- metadata[
+  colnames(counts),
+  ,
+  drop = FALSE
+]
+```
+
+Then confirm:
+
+```r
+stopifnot(
+  identical(
+    colnames(counts),
+    rownames(metadata)
+  )
+)
+```
+
+---
+
+## Missing values and summaries
+
+Missing values:
+
+```r
+is.na(metadata)
+```
+
+Sample groups:
+
+```r
+table(metadata$condition)
+```
+
+Dimensions:
+
+```r
+dim(counts)
+```
+
+Library totals:
+
+```r
+colSums(counts)
+```
+
+These are simple checks before statistical modeling.
+
+---
+
+# ggplot2 Fundamentals
+
+## Grammar of graphics
+
+```r
+ggplot(
+  data,
+  aes(
+    x = variable1,
+    y = variable2
+  )
+) +
+  geom_point()
+```
+
+Conceptually:
+
+```text
+data
++ aesthetics
++ geometry
++ labels
++ theme
+```
+
+---
+
+## Simple example
+
+```r
+ggplot(
+  metadata,
+  aes(
+    x = condition
+  )
+) +
+  geom_bar()
+```
+
+The goal here is not advanced plotting.
+
+It is to understand how a ggplot is **built in layers**.
+
+---
+
+# Ready for Differential Expression
+
+## What must be ready before DESeq2 or edgeR?
+
+```{mermaid}
+flowchart LR
+    A[Gene counts] --> D[Ready for DE]
+    B[Correct metadata] --> D
+    C[Experimental design] --> D
+    D --> E[DESeq2 / edgeR]
+```
+
+Checklist:
+
+- raw gene counts available;
+- sample names verified;
+- metadata complete;
+- conditions encoded correctly;
+- reference group understood;
+- important covariates identified.
+
+---
+
+## What comes next?
+
+::: {.takehome-card}
+### Next session — Differential expression
+
+We now move from **data handling** to **statistical inference**:
+
+**Count model → normalization → dispersion → hypothesis testing → multiple testing → DE genes**
+:::
+
+```{mermaid}
+flowchart LR
+    A[Counts + metadata] --> B[DESeq2 / edgeR]
+    B --> C[Model fitting]
+    C --> D[Hypothesis testing]
+    D --> E[Adjusted p-values]
+    E --> F[Differential expression results]
+```
+
+---
+
+# Hands-on Practice
+
+## Shell exercise
+
+::: {.practice-box}
+1. Navigate to the FASTQ directory.
+2. List all `.fastq.gz` files.
+3. Inspect one FASTQ record.
+4. Search a sample log file for warnings/errors.
+5. Create `qc/`, `alignment/` and `counts/` directories.
+6. Write a small loop over FASTQ filenames.
+:::
+
+---
+
+## R exercise
+
+::: {.practice-box}
+1. Create a sample vector.
+2. Create a metadata data frame.
+3. Import a prepared count matrix.
+4. Inspect `dim()`, `head()` and `colnames()`.
+5. Convert condition to a factor.
+6. Verify count columns match metadata rows.
+7. Calculate library totals with `colSums()`.
+:::
+
+---
+
+# Final Take-home Messages
+
+::: {.takehome-card .fragment}
+### 1
+Use the **Shell** for files, command-line tools and workflow automation.
+:::
+
+::: {.takehome-card .fragment}
+### 2
+Use **R** for structured data, statistics and visualization.
+:::
+
+::: {.takehome-card .fragment}
+### 3
+Before differential expression, make sure the **count matrix and metadata are correct and aligned**.
+:::
+
+::: {.takehome-card .fragment}
+### 4
+The next stage is not more file handling — it is **statistical modeling with DESeq2 or edgeR**.
+:::

@@ -1,0 +1,1168 @@
+---
+title: "Differential Expression Analysis"
+subtitle: "Hands-on DESeq2 and edgeR using synthetic RNA-seq counts"
+author: "Krushna Chandra Murmu"
+institute: "Bioinformatics Specialist, Premas Life Sciences"
+date: today
+
+format:
+  revealjs:
+    theme: simple
+    width: 1600
+    height: 900
+    margin: 0.045
+    center: false
+    progress: true
+    controls: true
+    navigation-mode: linear
+    transition: fade
+    background-transition: fade
+    incremental: true
+    toc: false
+    scrollable: true
+    auto-stretch: true
+    css: rnaseq-projector-large-mermaid.css
+    include-in-header:
+      text: |
+        <style>
+        :root {
+          --blue: #165DAD;
+          --dark: #10243E;
+          --soft: #F3F7FB;
+          --border: #D8E4F0;
+          --green: #3A9D5D;
+          --warm: #FFF7E8;
+        }
+
+        .reveal { font-size: 34px; }
+
+        .reveal h1,
+        .reveal h2,
+        .reveal h3 {
+          color: var(--dark);
+        }
+
+        .reveal h2 {
+          border-bottom: 3px solid #d7e3f1;
+          padding-bottom: 0.12em;
+        }
+
+        .module-card, .concept-card, .takehome-card, .problem-card {
+          border: 1px solid var(--border);
+          border-left: 9px solid var(--blue);
+          border-radius: 14px;
+          background: var(--soft);
+          padding: 16px 20px;
+          margin: 10px 0 16px 0;
+          box-shadow: 0 4px 14px rgba(16,36,62,0.07);
+        }
+
+        .takehome-card {
+          border-left-color: var(--green);
+          background: #F5FAF6;
+        }
+
+        .problem-card {
+          border-left-color: #E59B2A;
+          background: var(--warm);
+        }
+
+        .reveal pre code {
+          font-size: 0.61em;
+          line-height: 1.20;
+          max-height: 610px;
+        }
+
+        .reveal table {
+          font-size: 0.69em;
+        }
+
+        .practice-box {
+          border: 2px dashed #9CB7D4;
+          border-radius: 14px;
+          padding: 16px 20px;
+          background: #F8FBFE;
+          margin-top: 12px;
+        }
+
+        .small-note {
+          font-size: 0.72em;
+          color: #52677D;
+        }
+
+        .reveal .slides section {
+          max-height: 900px;
+          overflow-y: auto !important;
+          overflow-x: hidden;
+          scrollbar-width: thin;
+        }
+        </style>
+
+execute:
+  echo: true
+  eval: false
+  warning: false
+  message: false
+  freeze: auto
+
+editor: source
+---
+
+# Differential Expression Analysis
+
+## Where this session starts
+
+```{mermaid}
+flowchart LR
+    A[Count matrix] --> C[Differential expression]
+    B[Sample metadata] --> C
+    C --> D[DESeq2]
+    C --> E[edgeR]
+    D --> F[Genes + statistics]
+    E --> F
+```
+
+::: {.takehome-card .fragment}
+### No external dataset is required
+We will **generate a synthetic RNA-seq count matrix and metadata inside R** so every participant can run the full workflow locally.
+:::
+
+---
+
+## Learning objectives
+
+By the end of the session, participants should be able to:
+
+- generate a reproducible synthetic RNA-seq dataset;
+- create and validate metadata;
+- understand normalization and dispersion;
+- run differential expression with **DESeq2**;
+- run a comparable model with **edgeR**;
+- interpret log2 fold change, p-value and FDR;
+- create PCA, MA, volcano and heatmap visualizations;
+- compare the two frameworks conceptually.
+
+---
+
+# Part 1 — Setup
+
+## Required packages
+
+```{r}
+# Install once if needed
+
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+  install.packages("BiocManager")
+}
+
+BiocManager::install(c(
+  "DESeq2",
+  "edgeR"
+))
+
+install.packages(c(
+  "ggplot2",
+  "dplyr",
+  "tibble",
+  "pheatmap"
+))
+```
+
+::: {.small-note}
+For the live workshop, install packages before the session to avoid spending time on compilation or network access.
+:::
+
+---
+
+## Load packages
+
+```{r}
+library(DESeq2)
+library(edgeR)
+library(ggplot2)
+library(dplyr)
+library(tibble)
+library(pheatmap)
+```
+
+---
+
+# Part 2 — Create Synthetic RNA-seq Data
+
+## Experimental design
+
+We will simulate:
+
+| Feature | Design |
+|---|---|
+| Samples | 8 |
+| Control | 4 |
+| Treated | 4 |
+| Batches | 2 |
+| Genes | 1,000 |
+| Truly up-regulated genes | 80 |
+| Truly down-regulated genes | 80 |
+
+::: {.takehome-card .fragment}
+The synthetic dataset includes **biological variability, different library sizes and a balanced batch effect**.
+:::
+
+---
+
+## Create sample metadata
+
+```{r}
+set.seed(2026)
+
+metadata <- data.frame(
+  sample = paste0("S", 1:8),
+  condition = factor(
+    rep(c("Control", "Treated"), each = 4),
+    levels = c("Control", "Treated")
+  ),
+  batch = factor(
+    rep(c("Batch1", "Batch2"), times = 4)
+  )
+)
+
+rownames(metadata) <- metadata$sample
+
+metadata
+```
+
+Expected structure:
+
+```text
+   sample condition batch
+S1 S1     Control   Batch1
+S2 S2     Control   Batch2
+...
+S8 S8     Treated   Batch2
+```
+
+---
+
+## Create baseline expression
+
+```{r}
+n_genes <- 1000
+n_samples <- nrow(metadata)
+
+gene_ids <- paste0(
+  "Gene",
+  sprintf("%04d", 1:n_genes)
+)
+
+base_mean <- exp(
+  rnorm(
+    n_genes,
+    mean = log(80),
+    sd = 1
+  )
+)
+
+summary(base_mean)
+```
+
+::: {.fragment}
+This creates genes spanning low to high expression levels rather than giving every gene the same abundance.
+:::
+
+---
+
+## Define truly differential genes
+
+```{r}
+up_genes <- 1:80
+down_genes <- 81:160
+
+true_log2fc <- rep(0, n_genes)
+
+true_log2fc[up_genes] <- 1.5
+true_log2fc[down_genes] <- -1.5
+
+table(true_log2fc)
+```
+
+Interpretation:
+
+```text
++1.5  → about 2.8-fold higher in Treated
+-1.5  → about 2.8-fold lower in Treated
+0     → no true condition effect
+```
+
+---
+
+## Add library-size differences
+
+```{r}
+library_factor <- c(
+  0.85, 1.05, 0.95, 1.15,
+  0.90, 1.10, 1.00, 1.20
+)
+
+names(library_factor) <- metadata$sample
+```
+
+::: {.takehome-card .fragment}
+Different sequencing depths are normal. DESeq2 and edgeR estimate scaling factors so samples can be compared appropriately.
+:::
+
+---
+
+## Add a small batch effect
+
+```{r}
+batch_log2fc <- 0.25
+
+batch_factor <- ifelse(
+  metadata$batch == "Batch2",
+  2^batch_log2fc,
+  1
+)
+
+batch_factor
+```
+
+Because batch is balanced across conditions, it can be represented in the statistical model.
+
+---
+
+## Simulate negative-binomial counts
+
+```{r}
+dispersion <- runif(
+  n_genes,
+  min = 0.08,
+  max = 0.35
+)
+
+count_matrix <- matrix(
+  0L,
+  nrow = n_genes,
+  ncol = n_samples,
+  dimnames = list(
+    gene_ids,
+    metadata$sample
+  )
+)
+
+for (j in seq_len(n_samples)) {
+
+  condition_effect <- if (
+    metadata$condition[j] == "Treated"
+  ) {
+    2^true_log2fc
+  } else {
+    rep(1, n_genes)
+  }
+
+  mu <- base_mean *
+    condition_effect *
+    library_factor[j] *
+    batch_factor[j]
+
+  count_matrix[, j] <- rnbinom(
+    n_genes,
+    mu = mu,
+    size = 1 / dispersion
+  )
+}
+```
+
+---
+
+## Inspect the synthetic count matrix
+
+```{r}
+dim(count_matrix)
+
+count_matrix[1:8, ]
+
+colSums(count_matrix)
+
+summary(as.vector(count_matrix))
+```
+
+Questions:
+
+- Are all values non-negative integers?
+- Do library totals differ?
+- Are there genes with low counts?
+- Are all expected samples present?
+
+---
+
+## Save the synthetic files
+
+Participants can optionally write the generated data to disk:
+
+```{r}
+write.csv(
+  count_matrix,
+  "synthetic_gene_counts.csv"
+)
+
+write.csv(
+  metadata,
+  "synthetic_metadata.csv"
+)
+```
+
+::: {.takehome-card .fragment}
+The files are created locally during the workshop. No internet download is required.
+:::
+
+---
+
+# Part 3 — Validate Counts and Metadata
+
+## Confirm sample matching
+
+```{r}
+identical(
+  colnames(count_matrix),
+  rownames(metadata)
+)
+```
+
+Expected:
+
+```text
+TRUE
+```
+
+::: {.problem-card .fragment}
+Never start differential-expression analysis until the sample order in the count matrix matches the metadata.
+:::
+
+---
+
+## Examine library sizes
+
+```{r}
+library_sizes <- colSums(count_matrix)
+
+data.frame(
+  sample = names(library_sizes),
+  reads = library_sizes
+)
+```
+
+Optional visualization:
+
+```{r}
+barplot(
+  library_sizes,
+  las = 2,
+  ylab = "Total counts",
+  main = "Synthetic library sizes"
+)
+```
+
+---
+
+## Filter very low-count genes
+
+```{r}
+keep <- rowSums(
+  count_matrix >= 10
+) >= 3
+
+table(keep)
+
+counts_filtered <- count_matrix[
+  keep,
+  ,
+  drop = FALSE
+]
+
+dim(counts_filtered)
+```
+
+::: {.takehome-card .fragment}
+Filtering removes genes with too little information for reliable testing and reduces the multiple-testing burden.
+:::
+
+---
+
+# Part 4 — DESeq2 Workflow
+
+## Create the DESeq2 dataset
+
+```{r}
+dds <- DESeqDataSetFromMatrix(
+  countData = counts_filtered,
+  colData = metadata,
+  design = ~ batch + condition
+)
+
+dds
+```
+
+Why include `batch`?
+
+```text
+~ batch + condition
+```
+
+asks for the condition effect **after accounting for batch**.
+
+---
+
+## Run DESeq2
+
+```{r}
+dds <- DESeq(dds)
+```
+
+Conceptually, this performs:
+
+```{mermaid}
+flowchart LR
+    A[Counts] --> B[Size factors]
+    B --> C[Dispersion]
+    C --> D[Negative-binomial GLM]
+    D --> E[Hypothesis testing]
+```
+
+---
+
+## Inspect normalization factors
+
+```{r}
+sizeFactors(dds)
+```
+
+Compare with raw library totals:
+
+```{r}
+colSums(counts_filtered)
+```
+
+::: {.takehome-card .fragment}
+DESeq2 does not simply divide every sample by the total count. It estimates **relative size factors** using the median-of-ratios strategy.
+:::
+
+---
+
+## Variance-stabilizing transformation
+
+```{r}
+vsd <- vst(
+  dds,
+  blind = FALSE
+)
+```
+
+Use transformed values for:
+
+- PCA;
+- clustering;
+- heatmaps;
+- sample-level visualization.
+
+Use **raw counts** for the DESeq2 statistical model.
+
+---
+
+## PCA
+
+```{r}
+plotPCA(
+  vsd,
+  intgroup = c(
+    "condition",
+    "batch"
+  )
+)
+```
+
+Ask:
+
+- Do samples separate by condition?
+- Is there residual batch structure?
+- Do replicates behave sensibly?
+- Is any sample an outlier?
+
+---
+
+## Sample-distance heatmap
+
+```{r}
+sample_dist <- dist(
+  t(assay(vsd))
+)
+
+pheatmap(
+  as.matrix(sample_dist),
+  annotation_col = as.data.frame(
+    colData(vsd)[,
+      c("condition", "batch"),
+      drop = FALSE
+    ]
+  )
+)
+```
+
+---
+
+## Obtain Treated vs Control results
+
+```{r}
+res_deseq <- results(
+  dds,
+  contrast = c(
+    "condition",
+    "Treated",
+    "Control"
+  ),
+  alpha = 0.05
+)
+
+summary(res_deseq)
+```
+
+---
+
+## Build a clean result table
+
+```{r}
+deseq_df <- as.data.frame(
+  res_deseq
+) |>
+  rownames_to_column("gene_id") |>
+  mutate(
+    status = case_when(
+      !is.na(padj) &
+        padj < 0.05 &
+        log2FoldChange >= 1 ~ "Up",
+
+      !is.na(padj) &
+        padj < 0.05 &
+        log2FoldChange <= -1 ~ "Down",
+
+      TRUE ~ "Not significant"
+    )
+  )
+
+table(deseq_df$status)
+```
+
+---
+
+## Compare estimated and true effects
+
+Because this is synthetic data, we know the truth.
+
+```{r}
+truth <- data.frame(
+  gene_id = gene_ids,
+  true_log2fc = true_log2fc
+)
+
+deseq_check <- deseq_df |>
+  left_join(
+    truth,
+    by = "gene_id"
+  )
+
+cor(
+  deseq_check$log2FoldChange,
+  deseq_check$true_log2fc,
+  use = "complete.obs"
+)
+```
+
+::: {.takehome-card .fragment}
+Real datasets do not provide the true fold change. Synthetic data are useful because we can test whether the analysis recovers known signals.
+:::
+
+---
+
+## Count recovered true DE genes
+
+```{r}
+deseq_check <- deseq_check |>
+  mutate(
+    truth = case_when(
+      true_log2fc >= 1 ~ "True Up",
+      true_log2fc <= -1 ~ "True Down",
+      TRUE ~ "True Null"
+    )
+  )
+
+table(
+  deseq_check$truth,
+  deseq_check$status
+)
+```
+
+This gives a simple workshop-level view of:
+
+- true positives;
+- false positives;
+- false negatives.
+
+---
+
+## MA plot
+
+```{r}
+plotMA(
+  res_deseq,
+  alpha = 0.05,
+  ylim = c(-4, 4)
+)
+```
+
+Interpret:
+
+- x-axis = mean abundance;
+- y-axis = estimated log2 fold change;
+- highlighted genes = statistically significant.
+
+---
+
+## Volcano plot with ggplot2
+
+```{r}
+volcano_df <- deseq_df |>
+  mutate(
+    minus_log10_padj =
+      -log10(padj)
+  )
+
+ggplot(
+  volcano_df,
+  aes(
+    x = log2FoldChange,
+    y = minus_log10_padj,
+    shape = status
+  )
+) +
+  geom_point(
+    alpha = 0.65
+  ) +
+  geom_vline(
+    xintercept = c(-1, 1),
+    linetype = 2
+  ) +
+  geom_hline(
+    yintercept = -log10(0.05),
+    linetype = 2
+  ) +
+  theme_classic() +
+  labs(
+    x = "log2 fold change",
+    y = "-log10 adjusted p-value"
+  )
+```
+
+---
+
+## Heatmap of top DE genes
+
+```{r}
+top_genes <- deseq_df |>
+  filter(
+    status != "Not significant"
+  ) |>
+  arrange(padj) |>
+  slice_head(n = 30) |>
+  pull(gene_id)
+
+mat <- assay(vsd)[
+  top_genes,
+  ,
+  drop = FALSE
+]
+
+mat_z <- t(
+  scale(
+    t(mat)
+  )
+)
+
+pheatmap(
+  mat_z,
+  annotation_col = metadata[
+    ,
+    c("condition", "batch"),
+    drop = FALSE
+  ]
+)
+```
+
+---
+
+# Part 5 — edgeR Workflow
+
+## Create an edgeR object
+
+```{r}
+dge <- DGEList(
+  counts = counts_filtered,
+  samples = metadata
+)
+```
+
+Apply TMM normalization:
+
+```{r}
+dge <- calcNormFactors(
+  dge,
+  method = "TMM"
+)
+
+dge$samples
+```
+
+---
+
+## Build the design matrix
+
+```{r}
+design <- model.matrix(
+  ~ batch + condition,
+  data = metadata
+)
+
+design
+```
+
+::: {.takehome-card .fragment}
+The design matrix tells the statistical model how the samples relate to the experimental factors.
+:::
+
+---
+
+## Estimate dispersion
+
+```{r}
+dge <- estimateDisp(
+  dge,
+  design
+)
+
+plotBCV(dge)
+```
+
+edgeR estimates dispersion using information across genes.
+
+---
+
+## Fit the quasi-likelihood model
+
+```{r}
+fit <- glmQLFit(
+  dge,
+  design
+)
+```
+
+Test the condition effect:
+
+```{r}
+qlf <- glmQLFTest(
+  fit,
+  coef = "conditionTreated"
+)
+```
+
+---
+
+## Extract edgeR results
+
+```{r}
+edge_df <- topTags(
+  qlf,
+  n = Inf
+)$table |>
+  rownames_to_column(
+    "gene_id"
+  ) |>
+  mutate(
+    status = case_when(
+      FDR < 0.05 &
+        logFC >= 1 ~ "Up",
+
+      FDR < 0.05 &
+        logFC <= -1 ~ "Down",
+
+      TRUE ~ "Not significant"
+    )
+  )
+
+table(edge_df$status)
+```
+
+---
+
+# Part 6 — Compare DESeq2 and edgeR
+
+## Merge the results
+
+```{r}
+comparison <- deseq_df |>
+  select(
+    gene_id,
+    DESeq2_log2FC = log2FoldChange,
+    DESeq2_padj = padj,
+    DESeq2_status = status
+  ) |>
+  inner_join(
+    edge_df |>
+      select(
+        gene_id,
+        edgeR_log2FC = logFC,
+        edgeR_FDR = FDR,
+        edgeR_status = status
+      ),
+    by = "gene_id"
+  )
+```
+
+---
+
+## Compare effect-size estimates
+
+```{r}
+cor(
+  comparison$DESeq2_log2FC,
+  comparison$edgeR_log2FC,
+  use = "complete.obs"
+)
+```
+
+Scatter plot:
+
+```{r}
+ggplot(
+  comparison,
+  aes(
+    x = DESeq2_log2FC,
+    y = edgeR_log2FC
+  )
+) +
+  geom_point(
+    alpha = 0.45
+  ) +
+  geom_abline(
+    slope = 1,
+    intercept = 0,
+    linetype = 2
+  ) +
+  theme_classic()
+```
+
+---
+
+## Compare significant-gene overlap
+
+```{r}
+deseq_sig <- comparison |>
+  filter(
+    DESeq2_status !=
+      "Not significant"
+  ) |>
+  pull(gene_id)
+
+edger_sig <- comparison |>
+  filter(
+    edgeR_status !=
+      "Not significant"
+  ) |>
+  pull(gene_id)
+
+length(deseq_sig)
+length(edger_sig)
+
+length(
+  intersect(
+    deseq_sig,
+    edger_sig
+  )
+)
+```
+
+::: {.takehome-card .fragment}
+The packages will often agree strongly, but they are not expected to return perfectly identical gene lists.
+:::
+
+---
+
+## DESeq2 vs edgeR — what differs?
+
+| Concept | DESeq2 | edgeR |
+|---|---|---|
+| Count model | Negative binomial | Negative binomial |
+| Normalization | Median-of-ratios | TMM |
+| Dispersion | Trend + shrinkage | Empirical-Bayes strategies |
+| Common test | Wald | Quasi-likelihood / LRT |
+| Complex designs | Yes | Yes |
+| Input | Raw counts | Raw counts |
+
+---
+
+# Part 7 — Workshop Interpretation
+
+## What should participants report?
+
+For each comparison, report:
+
+- contrast tested;
+- design formula;
+- number of genes tested;
+- number of significant genes;
+- significance threshold;
+- fold-change threshold;
+- PCA / sample QC observations;
+- top genes by effect and significance;
+- agreement between biological replicates;
+- software/package versions.
+
+---
+
+## Common interpretation mistakes
+
+::: {.problem-card .fragment}
+### Avoid these
+
+- using TPM/FPKM as DESeq2/edgeR count input;
+- interpreting raw p-values without FDR correction;
+- ignoring metadata order;
+- ignoring batch or paired structure;
+- treating every significant gene as biologically important;
+- removing an outlier only because it weakens the desired result.
+:::
+
+---
+
+# Part 8 — Hands-on Exercises
+
+## Exercise 1 — Modify the synthetic effect size
+
+Change:
+
+```r
+true_log2fc[up_genes] <- 1.5
+true_log2fc[down_genes] <- -1.5
+```
+
+to:
+
+```r
+true_log2fc[up_genes] <- 0.7
+true_log2fc[down_genes] <- -0.7
+```
+
+Then rerun the simulation and DE analysis.
+
+### Question
+
+What happens to the number of detected genes?
+
+---
+
+## Exercise 2 — Reduce replication
+
+Use only:
+
+```text
+2 Control
+2 Treated
+```
+
+rather than four per condition.
+
+### Question
+
+How does reduced replication affect:
+
+- dispersion estimation?
+- p-values?
+- FDR?
+- sensitivity?
+
+---
+
+## Exercise 3 — Increase biological variability
+
+Change:
+
+```r
+dispersion <- runif(
+  n_genes,
+  0.08,
+  0.35
+)
+```
+
+to:
+
+```r
+dispersion <- runif(
+  n_genes,
+  0.25,
+  0.70
+)
+```
+
+### Question
+
+Does the same fold change become easier or harder to detect?
+
+---
+
+## Exercise 4 — Ignore batch
+
+Compare:
+
+```r
+design = ~ batch + condition
+```
+
+with:
+
+```r
+design = ~ condition
+```
+
+### Question
+
+When would ignoring batch become dangerous?
+
+::: {.takehome-card .fragment}
+Try modifying the synthetic design so batch and condition become partially or completely confounded.
+:::
+
+---
+
+# Final Take-home Messages
+
+::: {.takehome-card .fragment}
+### 1
+Differential expression begins with **correct counts and correct metadata**.
+:::
+
+::: {.takehome-card .fragment}
+### 2
+DESeq2 and edgeR both model RNA-seq counts using **negative-binomial frameworks**.
+:::
+
+::: {.takehome-card .fragment}
+### 3
+Normalization corrects for sample-level scaling; dispersion captures biological variability.
+:::
+
+::: {.takehome-card .fragment}
+### 4
+Interpret **effect size + uncertainty + sample-level patterns**, not p-values alone.
+:::
+
+::: {.takehome-card .fragment}
+### 5
+Synthetic data let participants run the entire analysis without downloading external datasets.
+:::
